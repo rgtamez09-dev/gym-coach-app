@@ -80,6 +80,29 @@ src/
 - Notion: https://www.notion.so/36a4c11ebcf58188b80ec59e0d39a54d
 - Plan completo: C:\Users\Rober\.claude\plans\hola-claude-te-comparto-zazzy-wolf.md
 
+## Git workflow
+
+**Rama principal:** `main` (protegida — sin push directo)
+**Rama de desarrollo:** `develop` (aquí va todo el trabajo)
+
+```
+develop  →  PR  →  main
+```
+
+- Todo el desarrollo ocurre en `develop`
+- Para mergear a `main`: crear Pull Request en GitHub
+- `main` = código listo para producción (Netlify deploya desde aquí)
+- No hacer `git push origin main` nunca — solo vía PR
+
+**Comandos cotidianos:**
+```bash
+git checkout develop          # cambiar a develop
+git add .                     # stagear cambios
+git commit -m "feat: ..."     # commitear (Conventional Commits)
+git push origin develop       # subir cambios
+# luego crear PR en GitHub: develop → main
+```
+
 ## Ajustes al plan de entrenamiento
 
 Para cambiar ejercicios, añadir músculo o sustituir algo del gym, decirlo directamente en la terminal de Claude Code. Los cambios en los templates se hacen vía Supabase SQL o actualizando el seed.
