@@ -73,7 +73,7 @@ src/
 - **Sesión 1** (Fundación): ✅ Completada — setup, schema, seed data, estructura
 - **Sesión 2** (Auth + Dashboard + Workout): ✅ Completada — PR #2 mergeado a main
 - **Sesión 3** (Progreso + Librería + Casa): ✅ Completada — PR #3 mergeado a main
-- **Sesión 4** (Plan + Nutrición + Deploy): ⬜ Pendiente
+- **Sesión 4** (Plan + Nutrición + Deploy): ✅ Completada — PR #4 mergeado a main
 
 ## Links
 

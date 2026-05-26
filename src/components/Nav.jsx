@@ -4,8 +4,9 @@ const links = [
   { to: '/', label: 'Inicio', icon: '🏠' },
   { to: '/workout', label: 'Sesión', icon: '💪' },
   { to: '/home', label: 'Casa', icon: '🏡' },
-  { to: '/exercises', label: 'Ejercicios', icon: '📖' },
+  { to: '/exercises', label: 'Ejerc.', icon: '📖' },
   { to: '/progress', label: 'Progreso', icon: '📈' },
+  { to: '/program', label: 'Plan', icon: '📅' },
 ]
 
 export default function Nav() {
@@ -18,7 +19,7 @@ export default function Nav() {
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex-1 flex flex-col items-center py-3 text-xs transition-colors ${
+              `flex-1 flex flex-col items-center py-3 text-[10px] transition-colors ${
                 isActive
                   ? 'text-[var(--color-gym-accent)]'
                   : 'text-[var(--color-gym-muted)] hover:text-[var(--color-gym-text)]'

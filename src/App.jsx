@@ -7,6 +7,8 @@ import Workout from './pages/Workout'
 import Progress from './pages/Progress'
 import Exercises from './pages/Exercises'
 import Home from './pages/Home'
+import Program from './pages/Program'
+import Nutrition from './pages/Nutrition'
 
 function Loader() {
   return (
@@ -53,8 +55,8 @@ export default function App() {
         <Route path="/exercises" element={<AuthGuard><Exercises /></AuthGuard>} />
         <Route path="/progress" element={<AuthGuard><Progress /></AuthGuard>} />
         <Route path="/home" element={<AuthGuard><Home /></AuthGuard>} />
-        {/* Plan — implemented in Session 4 */}
-        <Route path="/program" element={<AuthGuard><div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center text-[var(--color-gym-muted)]">Plan — Próximamente</div></AuthGuard>} />
+        <Route path="/program" element={<AuthGuard><Program /></AuthGuard>} />
+        <Route path="/nutrition" element={<AuthGuard><Nutrition /></AuthGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
