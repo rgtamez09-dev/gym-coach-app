@@ -4,6 +4,9 @@ import { useAuthStore } from './store/authStore'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Workout from './pages/Workout'
+import Progress from './pages/Progress'
+import Exercises from './pages/Exercises'
+import Home from './pages/Home'
 
 function Loader() {
   return (
@@ -47,10 +50,11 @@ export default function App() {
             </AuthGuard>
           }
         />
-        {/* Placeholder routes — implemented in Session 3 & 4 */}
-        <Route path="/program" element={<AuthGuard><div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center text-[var(--color-gym-muted)]">Plan — Sesión 4</div></AuthGuard>} />
-        <Route path="/exercises" element={<AuthGuard><div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center text-[var(--color-gym-muted)]">Ejercicios — Sesión 3</div></AuthGuard>} />
-        <Route path="/progress" element={<AuthGuard><div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center text-[var(--color-gym-muted)]">Progreso — Sesión 3</div></AuthGuard>} />
+        <Route path="/exercises" element={<AuthGuard><Exercises /></AuthGuard>} />
+        <Route path="/progress" element={<AuthGuard><Progress /></AuthGuard>} />
+        <Route path="/home" element={<AuthGuard><Home /></AuthGuard>} />
+        {/* Plan — implemented in Session 4 */}
+        <Route path="/program" element={<AuthGuard><div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center text-[var(--color-gym-muted)]">Plan — Próximamente</div></AuthGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

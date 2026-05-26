@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 const links = [
   { to: '/', label: 'Inicio', icon: '🏠' },
   { to: '/workout', label: 'Sesión', icon: '💪' },
-  { to: '/program', label: 'Plan', icon: '📅' },
+  { to: '/home', label: 'Casa', icon: '🏡' },
   { to: '/exercises', label: 'Ejercicios', icon: '📖' },
   { to: '/progress', label: 'Progreso', icon: '📈' },
 ]

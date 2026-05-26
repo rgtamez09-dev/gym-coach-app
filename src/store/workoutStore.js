@@ -45,6 +45,15 @@ export const useWorkoutStore = create((set, get) => ({
     set({ timerSeconds: 0, timerActive: false, _timerInterval: null })
   },
 
+  substituteExercise: (idx, newExerciseName) => {
+    const { activeSession } = get()
+    if (!activeSession) return
+    const updatedExercises = activeSession.exercises.map((ex, i) =>
+      i === idx ? { ...ex, exercise_name: newExerciseName } : ex
+    )
+    set({ activeSession: { ...activeSession, exercises: updatedExercises } })
+  },
+
   clearSession: () => {
     const interval = get()._timerInterval
     if (interval) clearInterval(interval)
