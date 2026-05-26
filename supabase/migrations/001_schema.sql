@@ -97,3 +97,13 @@ create policy "Exercises are public read"
 
 create policy "Session templates are public read"
   on session_templates for select using (true);
+
+-- ============================================================
+-- GRANTS — necesario cuando el schema se crea via SQL Editor
+-- (el Dashboard de Supabase los aplica automáticamente; SQL Editor no)
+-- ============================================================
+grant usage on schema public to anon, authenticated;
+grant select on public.exercises to anon, authenticated;
+grant select on public.session_templates to anon, authenticated;
+grant all on public.sessions to authenticated;
+grant all on public.sets to authenticated;
