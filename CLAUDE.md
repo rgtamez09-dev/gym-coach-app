@@ -52,6 +52,7 @@ src/
 | `/exercises` | Librería | Búsqueda, filtros, técnica, videos |
 | `/progress` | Progreso | Gráficas Recharts, PRs, alerta plateau |
 | `/nutrition` | Nutrición | Guía de referencia (macros + suplementos) |
+| `/home` | Casa | 6 rutinas de 10-20 min sin equipo (solo tapete) — rehab, movilidad, core, push, lower, flexibilidad |
 
 ## Schema Supabase
 
