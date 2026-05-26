@@ -4,6 +4,7 @@ import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
 import RestTimer from '../components/RestTimer'
 import TechniqueModal from '../components/TechniqueModal'
+import SubstituteModal from '../components/SubstituteModal'
 
 const RPE_LABELS = {
   6: 'Fácil',
@@ -25,6 +26,7 @@ export default function Workout() {
     startTimer,
     clearSession,
   } = useWorkoutStore()
+  const substituteExercise = useWorkoutStore((s) => s.substituteExercise)
 
   const [exerciseMap, setExerciseMap] = useState({})
   const [sessionSets, setSessionSets] = useState([])
@@ -33,6 +35,7 @@ export default function Workout() {
   const [reps, setReps] = useState('')
   const [rpe, setRpe] = useState(7)
   const [showTechnique, setShowTechnique] = useState(false)
+  const [showSubstitute, setShowSubstitute] = useState(false)
   const [finishing, setFinishing] = useState(false)
 
   const exercise = activeSession?.exercises?.[currentExerciseIdx]
@@ -84,7 +87,7 @@ export default function Workout() {
       session_id: activeSession.id,
       exercise_id: exerciseInfo?.id ?? null,
       set_number: setNumber,
-      weight_kg: weight !== '' ? parseFloat(weight) : null,
+      weight_kg: weight !== '' ? parseFloat(weight) : 0,
       reps: reps !== '' ? parseInt(reps) : null,
       rpe,
       completed: true,
@@ -137,13 +140,21 @@ export default function Workout() {
               <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">{exercise.note}</p>
             )}
           </div>
-          <button
-            onClick={() => setShowTechnique(true)}
-            disabled={!exerciseInfo}
-            className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-xl px-3 py-2 text-[var(--color-gym-text)] text-sm shrink-0 disabled:opacity-40 hover:border-[var(--color-gym-accent)] transition-colors"
-          >
-            Ver técnica
-          </button>
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <button
+              onClick={() => setShowTechnique(true)}
+              disabled={!exerciseInfo}
+              className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-xl px-3 py-2 text-[var(--color-gym-text)] text-sm disabled:opacity-40 hover:border-[var(--color-gym-accent)] transition-colors"
+            >
+              Ver técnica
+            </button>
+            <button
+              onClick={() => setShowSubstitute(true)}
+              className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-xl px-3 py-2 text-[var(--color-gym-muted)] text-sm hover:border-[var(--color-gym-warning)] hover:text-[var(--color-gym-text)] transition-colors"
+            >
+              Sustituir
+            </button>
+          </div>
         </div>
 
         {/* Target */}
@@ -310,6 +321,15 @@ export default function Workout() {
 
       {showTechnique && exerciseInfo && (
         <TechniqueModal exercise={exerciseInfo} onClose={() => setShowTechnique(false)} />
+      )}
+
+      {showSubstitute && (
+        <SubstituteModal
+          exerciseIdx={currentExerciseIdx}
+          exerciseName={exercise.exercise_name}
+          exerciseInfo={exerciseInfo}
+          onClose={() => setShowSubstitute(false)}
+        />
       )}
     </div>
   )
