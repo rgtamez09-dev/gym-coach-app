@@ -30,6 +30,14 @@ export default function App() {
 
   useEffect(() => {
     initialize()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        useAuthStore.getState().refreshSession()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
   return (
