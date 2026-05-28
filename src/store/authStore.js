@@ -13,6 +13,11 @@ export const useAuthStore = create((set) => ({
     })
   },
 
+  refreshSession: async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    set({ user: session?.user ?? null })
+  },
+
   signIn: async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
