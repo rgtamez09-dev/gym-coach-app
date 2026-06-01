@@ -13,6 +13,13 @@ const DAY_LABELS = {
   athletic: 'Sesión D — Athletic + Core',
 }
 
+const SESSION_TYPES = [
+  { type: 'push', label: 'A · Push' },
+  { type: 'lower', label: 'B · Lower' },
+  { type: 'pull', label: 'C · Pull' },
+  { type: 'athletic', label: 'D · Athletic' },
+]
+
 const PHASE_LABELS = {
   1: 'Phase 1: Foundation + Rehab',
   2: 'Phase 2: Fuerza + Hipertrofia',
@@ -30,26 +37,33 @@ export default function Dashboard() {
   const [lastPR, setLastPR] = useState(null)
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [selectedType, setSelectedType] = useState(null)
 
   const week = getCurrentWeek()
   const phase = getCurrentPhase(week)
   const todayType = getTodayDayType()
+  const activeType = selectedType ?? todayType
 
   useEffect(() => {
     fetchDashboardData()
   }, [])
 
-  const fetchDashboardData = async () => {
-    const [templateRes, countRes, prRes] = await Promise.all([
-      todayType
-        ? supabase
-            .from('session_templates')
-            .select('*')
-            .eq('phase', phase)
-            .eq('day_type', todayType)
-            .limit(1)
-        : Promise.resolve({ data: [] }),
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!activeType) { setTemplate(null); return }
+      const { data } = await supabase
+        .from('session_templates')
+        .select('*')
+        .eq('phase', phase)
+        .eq('day_type', activeType)
+        .limit(1)
+      setTemplate(data?.length ? data[0] : null)
+    }
+    loadTemplate()
+  }, [activeType, phase])
 
+  const fetchDashboardData = async () => {
+    const [countRes, prRes] = await Promise.all([
       supabase
         .from('sessions')
         .select('id', { count: 'exact', head: true })
@@ -66,7 +80,6 @@ export default function Dashboard() {
         .limit(1),
     ])
 
-    if (templateRes.data?.length) setTemplate(templateRes.data[0])
     setSessionsThisWeek(countRes.count || 0)
     if (prRes.data?.length) setLastPR(prRes.data[0])
     setLoading(false)
@@ -142,10 +155,12 @@ export default function Dashboard() {
         </div>
 
         {/* Today's session or rest */}
-        {todayType && template ? (
+        {activeType && template ? (
           <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)]/30 rounded-2xl p-4 mb-4">
-            <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-1">Sesión de hoy</p>
-            <p className="text-[var(--color-gym-text)] font-semibold text-lg">{DAY_LABELS[todayType]}</p>
+            <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-1">
+              {selectedType && selectedType !== todayType ? 'Sesión seleccionada' : 'Sesión de hoy'}
+            </p>
+            <p className="text-[var(--color-gym-text)] font-semibold text-lg">{DAY_LABELS[activeType]}</p>
             <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">
               {template.exercise_list.length} ejercicios
             </p>
@@ -164,6 +179,26 @@ export default function Dashboard() {
             <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">Tenis, movilidad o descanso activo</p>
           </div>
         )}
+
+        {/* Session type selector */}
+        <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-4 mb-4">
+          <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-3">Elegir sesión</p>
+          <div className="grid grid-cols-2 gap-2">
+            {SESSION_TYPES.map(({ type, label }) => (
+              <button
+                key={type}
+                onClick={() => setSelectedType(selectedType === type ? null : type)}
+                className={`py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
+                  activeType === type
+                    ? 'bg-[var(--color-gym-accent)] text-white'
+                    : 'bg-[var(--color-gym-border)]/30 text-[var(--color-gym-muted)] hover:text-[var(--color-gym-text)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Last PR */}
         {lastPR?.weight_kg ? (
