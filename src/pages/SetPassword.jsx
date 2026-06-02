@@ -16,10 +16,24 @@ export default function SetPassword() {
     if (password.length < 8) { setError('Mínimo 8 caracteres'); return }
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) setError(error.message)
-    else { setSuccess(true); setTimeout(() => navigate('/'), 2000) }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Sesión expirada. Vuelve a iniciar sesión.'); setLoading(false); return }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password })
+    if (updateError) { setError(updateError.message); setLoading(false); return }
+
+    // Verify the password actually works before declaring success
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password })
+    if (verifyError) {
+      setError('La contraseña no se guardó correctamente. Inténtalo de nuevo.')
+      setLoading(false)
+      return
+    }
+
+    setSuccess(true)
     setLoading(false)
+    setTimeout(() => navigate('/'), 2000)
   }
 
   return (
