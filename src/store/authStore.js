@@ -23,6 +23,11 @@ export const useAuthStore = create((set) => ({
     return { error }
   },
 
+  sendMagicLink: async (email) => {
+    const { error } = await supabase.auth.signInWithOtp({ email })
+    return { error }
+  },
+
   signOut: async () => {
     await supabase.auth.signOut()
     set({ user: null })
