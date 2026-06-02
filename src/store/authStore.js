@@ -26,6 +26,11 @@ export const useAuthStore = create((set) => ({
     return { error }
   },
 
+  verifyOtp: async (email, token) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    return { error }
+  },
+
   signOut: async () => {
     await supabase.auth.signOut()
     set({ user: null })
