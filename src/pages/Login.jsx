@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
 export default function Login() {
@@ -7,6 +8,7 @@ export default function Login() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
+  const navigate = useNavigate()
   const signIn = useAuthStore((s) => s.signIn)
   const sendMagicLink = useAuthStore((s) => s.sendMagicLink)
 
@@ -16,6 +18,7 @@ export default function Login() {
     setError(null)
     const { error } = await signIn(email, password)
     if (error) setError(error.message)
+    else navigate('/')
     setLoading(false)
   }
 
