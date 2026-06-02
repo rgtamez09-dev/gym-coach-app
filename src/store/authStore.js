@@ -18,16 +18,8 @@ export const useAuthStore = create((set) => ({
     set({ user: session?.user ?? null })
   },
 
-  signIn: async (email) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    })
-    return { error }
-  },
-
-  verifyOtp: async (email, token) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+  signIn: async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error }
   },
 
