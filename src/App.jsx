@@ -9,6 +9,7 @@ import Exercises from './pages/Exercises'
 import Home from './pages/Home'
 import Program from './pages/Program'
 import Nutrition from './pages/Nutrition'
+import SetPassword from './pages/SetPassword'
 
 function Loader() {
   return (
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/home" element={<AuthGuard><Home /></AuthGuard>} />
         <Route path="/program" element={<AuthGuard><Program /></AuthGuard>} />
         <Route path="/nutrition" element={<AuthGuard><Nutrition /></AuthGuard>} />
+        <Route path="/set-password" element={<AuthGuard><SetPassword /></AuthGuard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
