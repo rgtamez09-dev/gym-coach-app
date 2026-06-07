@@ -21,6 +21,7 @@ function ActiveRoutine({ routine, onBack }) {
     const duration = phase === 'exercise' ? ex.duration_sec : ex.rest_sec
 
     clearInterval(intervalRef.current)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSecondsLeft(duration)
 
     let remaining = duration

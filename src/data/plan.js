@@ -1,4 +1,4 @@
-export const PROGRAM_START = new Date('2026-06-01') // Week 1 starts June 1 (Mon)
+export const PROGRAM_START = new Date('2026-06-08') // Week 1 starts June 8 (Mon)
 
 const DAY_TYPE_MAP = {
   1: 'push',     // Monday
@@ -24,6 +24,12 @@ export function getCurrentPhase(week) {
 
 export function getTodayDayType() {
   return DAY_TYPE_MAP[new Date().getDay()]
+}
+
+export const PROGRESSION_RULES = {
+  1: 'Doble progresión: cuando alcances el máximo de reps del rango en todos los sets con RPE ≤ 7, sube 2.5 kg la próxima sesión.',
+  2: 'Doble progresión: cuando completes 8 reps en todos los sets con RPE ≤ 8, sube 2.5 kg la próxima sesión.',
+  3: 'Cluster sets 6×(3+15s+3): sube 2.5 kg cuando completes todos los bloques limpio con RPE ≤ 9.',
 }
 
 export function getMondayOfCurrentWeek() {

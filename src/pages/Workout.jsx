@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
+import { getCurrentWeek, getCurrentPhase, PROGRESSION_RULES } from '../data/plan'
 import RestTimer from '../components/RestTimer'
 import TechniqueModal from '../components/TechniqueModal'
 import SubstituteModal from '../components/SubstituteModal'
+
+const isRehabOrWarmup = (note) =>
+  note?.toLowerCase().includes('warm-up') || note?.toLowerCase().includes('rehab')
 
 const RPE_LABELS = {
   6: 'Fácil',
@@ -26,7 +30,6 @@ export default function Workout() {
     startTimer,
     clearSession,
   } = useWorkoutStore()
-  const substituteExercise = useWorkoutStore((s) => s.substituteExercise)
 
   const [exerciseMap, setExerciseMap] = useState({})
   const [sessionSets, setSessionSets] = useState([])
@@ -37,25 +40,17 @@ export default function Workout() {
   const [showTechnique, setShowTechnique] = useState(false)
   const [showSubstitute, setShowSubstitute] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [logError, setLogError] = useState(false)
+  const [finishError, setFinishError] = useState(false)
+  const [rehabDone, setRehabDone] = useState({})
+
+  const currentWeek = getCurrentWeek()
+  const currentPhase = getCurrentPhase(currentWeek)
+  const progressionRule = PROGRESSION_RULES[currentPhase]
 
   const exercise = activeSession?.exercises?.[currentExerciseIdx]
   const exerciseInfo = exercise ? exerciseMap[exercise.exercise_name] : null
-
-  useEffect(() => {
-    if (!activeSession) {
-      navigate('/')
-      return
-    }
-    fetchExercises()
-  }, [activeSession])
-
-  useEffect(() => {
-    if (exerciseInfo?.id) {
-      fetchPrevSets(exerciseInfo.id)
-      setWeight('')
-      setReps('')
-    }
-  }, [currentExerciseIdx, exerciseInfo?.id])
+  const isRehab = isRehabOrWarmup(exercise?.note)
 
   const fetchExercises = async () => {
     const { data } = await supabase.from('exercises').select('*')
@@ -78,8 +73,27 @@ export default function Workout() {
     setPrevSets(data || [])
   }
 
+  useEffect(() => {
+    if (!activeSession) {
+      navigate('/')
+      return
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchExercises()
+  }, [activeSession])
+
+  useEffect(() => {
+    if (exerciseInfo?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchPrevSets(exerciseInfo.id)
+      setWeight('')
+      setReps('')
+    }
+  }, [currentExerciseIdx, exerciseInfo?.id])
+
   const logSet = async () => {
     if (!exercise) return
+    setLogError(false)
     const currentSets = sessionSets.filter((s) => s.exercise_name === exercise.exercise_name)
     const setNumber = currentSets.length + 1
 
@@ -93,23 +107,31 @@ export default function Workout() {
       completed: true,
     }
 
-    const { data } = await supabase.from('sets').insert(payload).select().single()
-    if (data) {
-      setSessionSets((prev) => [...prev, { ...data, exercise_name: exercise.exercise_name }])
-      setWeight('')
-      setReps('')
-      if (exercise.rest_sec > 0) startTimer(exercise.rest_sec)
+    const { data, error } = await supabase.from('sets').insert(payload).select().single()
+    if (error || !data) {
+      setLogError(true)
+      return
     }
+    setSessionSets((prev) => [...prev, { ...data, exercise_name: exercise.exercise_name }])
+    setWeight('')
+    setReps('')
+    if (exercise.rest_sec > 0) startTimer(exercise.rest_sec)
   }
 
   const finishSession = async () => {
     setFinishing(true)
+    setFinishError(false)
     const startedAt = new Date(activeSession.created_at)
     const duration = Math.round((Date.now() - startedAt.getTime()) / 60000)
-    await supabase
+    const { error } = await supabase
       .from('sessions')
       .update({ completed: true, duration_min: duration })
       .eq('id', activeSession.id)
+    if (error) {
+      setFinishError(true)
+      setFinishing(false)
+      return
+    }
     clearSession()
     navigate('/')
   }
@@ -157,8 +179,38 @@ export default function Workout() {
           </div>
         </div>
 
+        {/* Rehab / Warm-up badge */}
+        {isRehab && (
+          <div className={`rounded-2xl border p-3 mb-3 flex items-center justify-between ${
+            rehabDone[currentExerciseIdx]
+              ? 'bg-[var(--color-gym-success)]/10 border-[var(--color-gym-success)]/40'
+              : 'bg-[var(--color-gym-warning)]/10 border-[var(--color-gym-warning)]/40'
+          }`}>
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${
+                rehabDone[currentExerciseIdx] ? 'text-[var(--color-gym-success)]' : 'text-[var(--color-gym-warning)]'
+              }`}>
+                {exercise.note?.toLowerCase().includes('warm-up') ? 'Warm-up' : 'Rehab'}
+              </p>
+              <p className="text-[var(--color-gym-muted)] text-xs mt-0.5">
+                {rehabDone[currentExerciseIdx] ? 'Completado' : 'No te lo saltes — es clave para longevidad'}
+              </p>
+            </div>
+            <button
+              onClick={() => setRehabDone((prev) => ({ ...prev, [currentExerciseIdx]: !prev[currentExerciseIdx] }))}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
+                rehabDone[currentExerciseIdx]
+                  ? 'bg-[var(--color-gym-success)]/20 text-[var(--color-gym-success)]'
+                  : 'bg-[var(--color-gym-warning)]/20 text-[var(--color-gym-warning)]'
+              }`}
+            >
+              {rehabDone[currentExerciseIdx] ? '✓ Hecho' : 'Marcar'}
+            </button>
+          </div>
+        )}
+
         {/* Target */}
-        <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-3 mb-4 flex gap-4">
+        <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-3 mb-3 flex gap-4">
           <div className="text-center flex-1">
             <p className="text-[var(--color-gym-muted)] text-xs">Series</p>
             <p className="text-[var(--color-gym-text)] font-bold text-xl">{exercise.sets}</p>
@@ -174,6 +226,14 @@ export default function Workout() {
             <p className="text-[var(--color-gym-text)] font-bold text-xl">{exercise.rest_sec}s</p>
           </div>
         </div>
+
+        {/* Progression rule — only for non-rehab exercises */}
+        {!isRehab && progressionRule && (
+          <div className="bg-[var(--color-gym-accent)]/5 border border-[var(--color-gym-accent)]/20 rounded-xl px-3 py-2 mb-4">
+            <p className="text-[var(--color-gym-muted)] text-[10px] uppercase tracking-wide mb-0.5">Regla de progresión (Fase {currentPhase})</p>
+            <p className="text-[var(--color-gym-text)] text-xs leading-relaxed">{progressionRule}</p>
+          </div>
+        )}
 
         {/* Rest Timer */}
         <RestTimer />
@@ -289,6 +349,11 @@ export default function Workout() {
           >
             Registrar serie
           </button>
+          {logError && (
+            <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+              No se pudo guardar. Los datos siguen aquí — intenta de nuevo.
+            </p>
+          )}
         </div>
 
         {/* Navigate exercises */}
@@ -317,6 +382,11 @@ export default function Workout() {
         >
           {finishing ? 'Guardando...' : 'Finalizar sesión'}
         </button>
+        {finishError && (
+          <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+            No se pudo guardar la sesión. Verifica tu conexión e intenta de nuevo.
+          </p>
+        )}
       </div>
 
       {showTechnique && exerciseInfo && (

@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
 import Nav from '../components/Nav'
+import ErrorState from '../components/ErrorState'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -21,67 +22,79 @@ export default function Progress() {
   const [exerciseData, setExerciseData] = useState({})
   const [selectedExercise, setSelectedExercise] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchProgressData()
-  }, [])
+  const [error, setError] = useState(false)
 
   const fetchProgressData = async () => {
-    const { data: sessions } = await supabase
-      .from('sessions')
-      .select('id, date')
-      .eq('user_id', user.id)
-      .eq('completed', true)
-      .order('date', { ascending: true })
+    setError(false)
+    try {
+      const { data: sessions, error: sessErr } = await supabase
+        .from('sessions')
+        .select('id, date')
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .order('date', { ascending: true })
 
-    if (!sessions?.length) {
+      if (sessErr) throw sessErr
+
+      if (!sessions?.length) {
+        setLoading(false)
+        return
+      }
+
+      const sessionIds = sessions.map((s) => s.id)
+      const dateMap = {}
+      sessions.forEach((s) => { dateMap[s.id] = s.date })
+
+      const { data: sets, error: setsErr } = await supabase
+        .from('sets')
+        .select('weight_kg, reps, exercise_id, session_id, exercises(name_en)')
+        .in('session_id', sessionIds)
+        .eq('completed', true)
+        .not('weight_kg', 'is', null)
+        .gt('weight_kg', 0)
+
+      if (setsErr) throw setsErr
+
+      if (!sets?.length) {
+        setLoading(false)
+        return
+      }
+
+      const grouped = {}
+      sets.forEach((s) => {
+        const name = s.exercises?.name_en
+        if (!name) return
+        const date = dateMap[s.session_id]
+        if (!grouped[name]) grouped[name] = {}
+        if (!grouped[name][date]) grouped[name][date] = []
+        grouped[name][date].push(s.weight_kg)
+      })
+
+      const chartData = {}
+      Object.entries(grouped).forEach(([name, byDate]) => {
+        chartData[name] = Object.entries(byDate)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, weights]) => ({
+            date,
+            label: formatDate(date),
+            maxWeight: Math.max(...weights),
+          }))
+      })
+
+      setExerciseData(chartData)
+      const names = Object.keys(chartData)
+      if (names.length) setSelectedExercise(names[0])
+    } catch {
+      setError(true)
+    } finally {
       setLoading(false)
-      return
     }
-
-    const sessionIds = sessions.map((s) => s.id)
-    const dateMap = {}
-    sessions.forEach((s) => { dateMap[s.id] = s.date })
-
-    const { data: sets } = await supabase
-      .from('sets')
-      .select('weight_kg, reps, exercise_id, session_id, exercises(name_en)')
-      .in('session_id', sessionIds)
-      .eq('completed', true)
-      .not('weight_kg', 'is', null)
-      .gt('weight_kg', 0)
-
-    if (!sets?.length) {
-      setLoading(false)
-      return
-    }
-
-    const grouped = {}
-    sets.forEach((s) => {
-      const name = s.exercises?.name_en
-      if (!name) return
-      const date = dateMap[s.session_id]
-      if (!grouped[name]) grouped[name] = {}
-      if (!grouped[name][date]) grouped[name][date] = []
-      grouped[name][date].push(s.weight_kg)
-    })
-
-    const chartData = {}
-    Object.entries(grouped).forEach(([name, byDate]) => {
-      chartData[name] = Object.entries(byDate)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, weights]) => ({
-          date,
-          label: formatDate(date),
-          maxWeight: Math.max(...weights),
-        }))
-    })
-
-    setExerciseData(chartData)
-    const names = Object.keys(chartData)
-    if (names.length) setSelectedExercise(names[0])
-    setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchProgressData()
+  }, [])
 
   const exerciseNames = Object.keys(exerciseData)
   const chartData = selectedExercise ? exerciseData[selectedExercise] : []
@@ -92,6 +105,15 @@ export default function Progress() {
     return (
       <div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center">
         <p className="text-[var(--color-gym-muted)]">Cargando progreso...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[var(--color-gym-bg)] flex flex-col items-center justify-center px-4 gap-4">
+        <ErrorState onRetry={fetchProgressData} />
+        <Nav />
       </div>
     )
   }

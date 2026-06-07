@@ -6,10 +6,7 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
   const substituteExercise = useWorkoutStore((s) => s.substituteExercise)
   const [alternatives, setAlternatives] = useState([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchAlternatives()
-  }, [])
+  const [error, setError] = useState(false)
 
   const fetchAlternatives = async () => {
     if (!exerciseInfo?.muscle_groups?.length) {
@@ -17,7 +14,7 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
       return
     }
 
-    const { data } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from('exercises')
       .select('id, name_en, name_es, muscle_groups')
       .neq('name_en', exerciseName)
@@ -25,9 +22,18 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
       .order('name_en')
       .limit(8)
 
-    setAlternatives(data || [])
+    if (fetchErr) {
+      setError(true)
+    } else {
+      setAlternatives(data || [])
+    }
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAlternatives()
+  }, [])
 
   const handleSubstitute = (newName) => {
     substituteExercise(exerciseIdx, newName)
@@ -52,6 +58,8 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
 
         {loading ? (
           <p className="text-[var(--color-gym-muted)] text-sm">Buscando alternativas...</p>
+        ) : error ? (
+          <p className="text-[var(--color-gym-danger)] text-sm">No se pudieron cargar las alternativas. Verifica tu conexión.</p>
         ) : alternatives.length === 0 ? (
           <p className="text-[var(--color-gym-muted)] text-sm">No se encontraron alternativas para este ejercicio.</p>
         ) : (
