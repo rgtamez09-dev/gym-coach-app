@@ -26,6 +26,12 @@ export function getTodayDayType() {
   return DAY_TYPE_MAP[new Date().getDay()]
 }
 
+export const PROGRESSION_RULES = {
+  1: 'Doble progresión: cuando alcances el máximo de reps del rango en todos los sets con RPE ≤ 7, sube 2.5 kg la próxima sesión.',
+  2: 'Doble progresión: cuando completes 8 reps en todos los sets con RPE ≤ 8, sube 2.5 kg la próxima sesión.',
+  3: 'Cluster sets 6×(3+15s+3): sube 2.5 kg cuando completes todos los bloques limpio con RPE ≤ 9.',
+}
+
 export function getMondayOfCurrentWeek() {
   const today = new Date()
   const day = today.getDay()
