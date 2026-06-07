@@ -1,4 +1,4 @@
-export const PROGRAM_START = new Date('2026-06-01') // Week 1 starts June 1 (Mon)
+export const PROGRAM_START = new Date('2026-06-08') // Week 1 starts June 8 (Mon)
 
 const DAY_TYPE_MAP = {
   1: 'push',     // Monday
