@@ -17,36 +17,24 @@ export default function Exercises() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const fetchExercises = () => {
+  const fetchExercises = async () => {
     setLoading(true)
     setError(false)
-    supabase
+    const { data, error: fetchErr } = await supabase
       .from('exercises')
       .select('*')
       .order('name_en')
-      .then(({ data, error: fetchErr }) => {
-        if (fetchErr) {
-          setError(true)
-        } else {
-          setExercises(data || [])
-        }
-        setLoading(false)
-      })
+    if (fetchErr) {
+      setError(true)
+    } else {
+      setExercises(data || [])
+    }
+    setLoading(false)
   }
 
   useEffect(() => {
-    supabase
-      .from('exercises')
-      .select('*')
-      .order('name_en')
-      .then(({ data, error: fetchErr }) => {
-        if (fetchErr) {
-          setError(true)
-        } else {
-          setExercises(data || [])
-        }
-        setLoading(false)
-      })
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchExercises()
   }, [])
 
   const allMuscles = [...new Set(exercises.flatMap((e) => e.muscle_groups || []))].sort()
