@@ -26,7 +26,6 @@ export default function Workout() {
     startTimer,
     clearSession,
   } = useWorkoutStore()
-  const substituteExercise = useWorkoutStore((s) => s.substituteExercise)
 
   const [exerciseMap, setExerciseMap] = useState({})
   const [sessionSets, setSessionSets] = useState([])
@@ -37,25 +36,11 @@ export default function Workout() {
   const [showTechnique, setShowTechnique] = useState(false)
   const [showSubstitute, setShowSubstitute] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [logError, setLogError] = useState(false)
+  const [finishError, setFinishError] = useState(false)
 
   const exercise = activeSession?.exercises?.[currentExerciseIdx]
   const exerciseInfo = exercise ? exerciseMap[exercise.exercise_name] : null
-
-  useEffect(() => {
-    if (!activeSession) {
-      navigate('/')
-      return
-    }
-    fetchExercises()
-  }, [activeSession])
-
-  useEffect(() => {
-    if (exerciseInfo?.id) {
-      fetchPrevSets(exerciseInfo.id)
-      setWeight('')
-      setReps('')
-    }
-  }, [currentExerciseIdx, exerciseInfo?.id])
 
   const fetchExercises = async () => {
     const { data } = await supabase.from('exercises').select('*')
@@ -78,8 +63,27 @@ export default function Workout() {
     setPrevSets(data || [])
   }
 
+  useEffect(() => {
+    if (!activeSession) {
+      navigate('/')
+      return
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchExercises()
+  }, [activeSession])
+
+  useEffect(() => {
+    if (exerciseInfo?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchPrevSets(exerciseInfo.id)
+      setWeight('')
+      setReps('')
+    }
+  }, [currentExerciseIdx, exerciseInfo?.id])
+
   const logSet = async () => {
     if (!exercise) return
+    setLogError(false)
     const currentSets = sessionSets.filter((s) => s.exercise_name === exercise.exercise_name)
     const setNumber = currentSets.length + 1
 
@@ -93,23 +97,31 @@ export default function Workout() {
       completed: true,
     }
 
-    const { data } = await supabase.from('sets').insert(payload).select().single()
-    if (data) {
-      setSessionSets((prev) => [...prev, { ...data, exercise_name: exercise.exercise_name }])
-      setWeight('')
-      setReps('')
-      if (exercise.rest_sec > 0) startTimer(exercise.rest_sec)
+    const { data, error } = await supabase.from('sets').insert(payload).select().single()
+    if (error || !data) {
+      setLogError(true)
+      return
     }
+    setSessionSets((prev) => [...prev, { ...data, exercise_name: exercise.exercise_name }])
+    setWeight('')
+    setReps('')
+    if (exercise.rest_sec > 0) startTimer(exercise.rest_sec)
   }
 
   const finishSession = async () => {
     setFinishing(true)
+    setFinishError(false)
     const startedAt = new Date(activeSession.created_at)
     const duration = Math.round((Date.now() - startedAt.getTime()) / 60000)
-    await supabase
+    const { error } = await supabase
       .from('sessions')
       .update({ completed: true, duration_min: duration })
       .eq('id', activeSession.id)
+    if (error) {
+      setFinishError(true)
+      setFinishing(false)
+      return
+    }
     clearSession()
     navigate('/')
   }
@@ -289,6 +301,11 @@ export default function Workout() {
           >
             Registrar serie
           </button>
+          {logError && (
+            <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+              No se pudo guardar. Los datos siguen aquí — intenta de nuevo.
+            </p>
+          )}
         </div>
 
         {/* Navigate exercises */}
@@ -317,6 +334,11 @@ export default function Workout() {
         >
           {finishing ? 'Guardando...' : 'Finalizar sesión'}
         </button>
+        {finishError && (
+          <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+            No se pudo guardar la sesión. Verifica tu conexión e intenta de nuevo.
+          </p>
+        )}
       </div>
 
       {showTechnique && exerciseInfo && (

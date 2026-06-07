@@ -5,6 +5,7 @@ import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
 import { getCurrentWeek, getCurrentPhase, getTodayDayType, getMondayOfCurrentWeek } from '../data/plan'
 import Nav from '../components/Nav'
+import ErrorState from '../components/ErrorState'
 
 const DAY_LABELS = {
   push: 'Sesión A — Upper Push',
@@ -36,7 +37,9 @@ export default function Dashboard() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
   const [lastPR, setLastPR] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState(false)
   const [selectedType, setSelectedType] = useState(null)
 
   const week = getCurrentWeek()
@@ -44,7 +47,39 @@ export default function Dashboard() {
   const todayType = getTodayDayType()
   const activeType = selectedType ?? todayType
 
+  const fetchDashboardData = async () => {
+    setError(false)
+    try {
+      const [countRes, prRes] = await Promise.all([
+        supabase
+          .from('sessions')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('completed', true)
+          .gte('date', getMondayOfCurrentWeek()),
+
+        supabase
+          .from('sets')
+          .select('weight_kg, reps, exercises(name_en)')
+          .eq('completed', true)
+          .not('weight_kg', 'is', null)
+          .order('weight_kg', { ascending: false })
+          .limit(1),
+      ])
+
+      if (countRes.error || prRes.error) throw new Error('fetch failed')
+
+      setSessionsThisWeek(countRes.count || 0)
+      if (prRes.data?.length) setLastPR(prRes.data[0])
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData()
   }, [])
 
@@ -59,46 +94,29 @@ export default function Dashboard() {
         .limit(1)
       setTemplate(data?.length ? data[0] : null)
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTemplate()
   }, [activeType, phase])
-
-  const fetchDashboardData = async () => {
-    const [countRes, prRes] = await Promise.all([
-      supabase
-        .from('sessions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('completed', true)
-        .gte('date', getMondayOfCurrentWeek()),
-
-      supabase
-        .from('sets')
-        .select('weight_kg, reps, exercises(name_en)')
-        .eq('completed', true)
-        .not('weight_kg', 'is', null)
-        .order('weight_kg', { ascending: false })
-        .limit(1),
-    ])
-
-    setSessionsThisWeek(countRes.count || 0)
-    if (prRes.data?.length) setLastPR(prRes.data[0])
-    setLoading(false)
-  }
 
   const handleStartSession = async () => {
     if (!template) return
     setStarting(true)
+    setStartError(false)
     const today = new Date().toISOString().split('T')[0]
-    const { data: session } = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({ user_id: user.id, template_id: template.id, date: today })
       .select()
       .single()
 
-    if (session) {
-      setActiveSession({ ...session, exercises: template.exercise_list })
-      navigate('/workout')
+    if (sessionError || !session) {
+      setStartError(true)
+      setStarting(false)
+      return
     }
+
+    setActiveSession({ ...session, exercises: template.exercise_list })
+    navigate('/workout')
     setStarting(false)
   }
 
@@ -106,6 +124,15 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center">
         <p className="text-[var(--color-gym-muted)]">Cargando...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[var(--color-gym-bg)] flex flex-col items-center justify-center px-4 gap-4">
+        <ErrorState onRetry={fetchDashboardData} />
+        <Nav />
       </div>
     )
   }
@@ -152,6 +179,11 @@ export default function Dashboard() {
           <p className="text-[var(--color-gym-muted)] text-xs mt-1.5">
             {sessionsThisWeek} de 4 sesiones esta semana
           </p>
+          {sessionsThisWeek === 0 && (
+            <p className="text-[var(--color-gym-accent)] text-xs mt-1">
+              Elige una sesión abajo y empieza tu primera sesión de la semana
+            </p>
+          )}
         </div>
 
         {/* Today's session or rest */}
@@ -171,6 +203,11 @@ export default function Dashboard() {
             >
               {starting ? 'Iniciando...' : 'Iniciar sesión'}
             </button>
+            {startError && (
+              <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+                No se pudo crear la sesión. Verifica tu conexión e intenta de nuevo.
+              </p>
+            )}
           </div>
         ) : (
           <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-4 mb-4">

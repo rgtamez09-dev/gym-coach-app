@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import Nav from '../components/Nav'
+import ErrorState from '../components/ErrorState'
 
 function getYouTubeEmbedUrl(url) {
   if (!url) return null
@@ -14,14 +15,36 @@ export default function Exercises() {
   const [muscleFilter, setMuscleFilter] = useState('')
   const [selectedId, setSelectedId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  const fetchExercises = () => {
+    setLoading(true)
+    setError(false)
+    supabase
+      .from('exercises')
+      .select('*')
+      .order('name_en')
+      .then(({ data, error: fetchErr }) => {
+        if (fetchErr) {
+          setError(true)
+        } else {
+          setExercises(data || [])
+        }
+        setLoading(false)
+      })
+  }
 
   useEffect(() => {
     supabase
       .from('exercises')
       .select('*')
       .order('name_en')
-      .then(({ data }) => {
-        setExercises(data || [])
+      .then(({ data, error: fetchErr }) => {
+        if (fetchErr) {
+          setError(true)
+        } else {
+          setExercises(data || [])
+        }
         setLoading(false)
       })
   }, [])
@@ -38,6 +61,15 @@ export default function Exercises() {
     return (
       <div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center">
         <p className="text-[var(--color-gym-muted)]">Cargando ejercicios...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[var(--color-gym-bg)] flex flex-col items-center justify-center px-4 gap-4">
+        <ErrorState onRetry={fetchExercises} />
+        <Nav />
       </div>
     )
   }
