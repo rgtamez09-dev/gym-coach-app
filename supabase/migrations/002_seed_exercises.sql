@@ -269,4 +269,26 @@ insert into exercises (name_en, name_es, muscle_groups, video_url, description_t
   '1) Towel scrunches 20 reps. 2) Marble pickups (si tienes). 3) Calf stretch con rodilla recta 60s. 4) Calf stretch con rodilla doblada 60s. 5) Foot massage con pelota de tenis 60s. 6) Tibialis raises 20 reps.',
   'Hacer descalzo. El masaje con pelota de tenis puede ser intenso — es normal. Consistencia > intensidad.',
   'Squat University / ATG'
+),
+
+-- ============================================================
+-- WARM-UPS (referenciados en templates)
+-- ============================================================
+(
+  'Band Pull-Apart + Wrist Circles',
+  'Separaciones con banda + círculos de muñeca',
+  array['Deltoides posterior', 'Romboides', 'Rotadores externos', 'Muñeca'],
+  'https://www.youtube.com/watch?v=Avc_5PZbHpM',
+  'Band pull-apart: banda a la altura del pecho, separar hasta que los omóplatos se junten, controlar el regreso. Wrist circles: círculos lentos con las muñecas en ambas direcciones, 10 reps cada sentido.',
+  'Obligatorio en warm-up de sesión A para activar la salud del hombro derecho y lubricar las muñecas antes de cargar.',
+  'Jeff Nippard / ATG'
+),
+(
+  'Lateral Raise',
+  'Elevación lateral',
+  array['Deltoides lateral', 'Deltoides medial'],
+  null,
+  'Codo ligeramente flexionado (15-20°). Elevar hasta la altura del hombro — no más. Controlar el descenso 2-3s. Cable: tensión constante desde el fondo (superior para hipertrofia). DB: inclinarse 10° hacia adelante para mejor alineación.',
+  'Hombro: no superar la línea del hombro. Flexión de codo reduce tensión en el manguito rotador. Empezar con peso muy ligero — el delt medial es pequeño y se sobreestima el peso inicial.',
+  'Jeff Nippard / Renaissance Periodization'
 );

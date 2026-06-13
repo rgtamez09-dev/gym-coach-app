@@ -9,7 +9,11 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
   const [error, setError] = useState(false)
 
   const fetchAlternatives = async () => {
-    if (!exerciseInfo?.muscle_groups?.length) {
+    if (!exerciseInfo) {
+      setLoading(false)
+      return
+    }
+    if (!exerciseInfo.muscle_groups?.length) {
       setLoading(false)
       return
     }
@@ -60,8 +64,12 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
           <p className="text-[var(--color-gym-muted)] text-sm">Buscando alternativas...</p>
         ) : error ? (
           <p className="text-[var(--color-gym-danger)] text-sm">No se pudieron cargar las alternativas. Verifica tu conexión.</p>
+        ) : !exerciseInfo ? (
+          <p className="text-[var(--color-gym-muted)] text-sm">
+            Este ejercicio no tiene datos en la librería — no se pueden buscar alternativas por músculo.
+          </p>
         ) : alternatives.length === 0 ? (
-          <p className="text-[var(--color-gym-muted)] text-sm">No se encontraron alternativas para este ejercicio.</p>
+          <p className="text-[var(--color-gym-muted)] text-sm">No se encontraron alternativas para los músculos de este ejercicio.</p>
         ) : (
           <div className="space-y-2">
             <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-3">Alternativas — mismos músculos</p>

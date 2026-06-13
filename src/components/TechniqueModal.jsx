@@ -2,7 +2,7 @@ function getEmbedUrl(url) {
   try {
     const u = new URL(url)
     const v = u.searchParams.get('v')
-    return v ? `https://www.youtube.com/embed/${v}` : url
+    return v ? `https://www.youtube-nocookie.com/embed/${v}?playsinline=1` : url
   } catch {
     return url
   }
@@ -32,13 +32,23 @@ export default function TechniqueModal({ exercise, onClose }) {
           </div>
 
           {exercise.video_url && (
-            <div className="mb-5 rounded-2xl overflow-hidden">
-              <iframe
-                src={getEmbedUrl(exercise.video_url)}
-                className="w-full aspect-video"
-                allowFullScreen
-                title={exercise.name_en}
-              />
+            <div className="mb-5">
+              <div className="rounded-2xl overflow-hidden">
+                <iframe
+                  src={getEmbedUrl(exercise.video_url)}
+                  className="w-full aspect-video"
+                  allowFullScreen
+                  title={exercise.name_en}
+                />
+              </div>
+              <a
+                href={exercise.video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[var(--color-gym-accent)] text-sm mt-2 hover:underline"
+              >
+                Abrir en YouTube ↗
+              </a>
             </div>
           )}
 
