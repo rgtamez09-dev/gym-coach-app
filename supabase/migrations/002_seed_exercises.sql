@@ -282,4 +282,13 @@ insert into exercises (name_en, name_es, muscle_groups, video_url, description_t
   'Band pull-apart: banda a la altura del pecho, separar hasta que los omóplatos se junten, controlar el regreso. Wrist circles: círculos lentos con las muñecas en ambas direcciones, 10 reps cada sentido.',
   'Obligatorio en warm-up de sesión A para activar la salud del hombro derecho y lubricar las muñecas antes de cargar.',
   'Jeff Nippard / ATG'
+),
+(
+  'Lateral Raise',
+  'Elevación lateral',
+  array['Deltoides lateral', 'Deltoides medial'],
+  null,
+  'Codo ligeramente flexionado (15-20°). Elevar hasta la altura del hombro — no más. Controlar el descenso 2-3s. Cable: tensión constante desde el fondo (superior para hipertrofia). DB: inclinarse 10° hacia adelante para mejor alineación.',
+  'Hombro: no superar la línea del hombro. Flexión de codo reduce tensión en el manguito rotador. Empezar con peso muy ligero — el delt medial es pequeño y se sobreestima el peso inicial.',
+  'Jeff Nippard / Renaissance Periodization'
 );

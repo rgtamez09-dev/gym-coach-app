@@ -18,6 +18,7 @@ values (
     jsonb_build_object('exercise_name', 'Face Pulls', 'superset_with', 'Incline DB Press', 'sets', 3, 'reps', '15', 'rest_sec', 0),
     jsonb_build_object('exercise_name', 'Weighted Dips', 'sets', 3, 'reps', '6-8', 'rest_sec', 120, 'note', '+5-10kg cinturón'),
     jsonb_build_object('exercise_name', 'Landmine Press', 'sets', 3, 'reps', '10-12', 'rest_sec', 90, 'per_side', true),
+    jsonb_build_object('exercise_name', 'Lateral Raise', 'sets', 3, 'reps', '12-15', 'rest_sec', 60, 'note', 'Cable o mancuerna — empezar muy ligero'),
     jsonb_build_object('exercise_name', 'Explosive Push-up', 'sets', 2, 'reps', '8', 'rest_sec', 90),
     jsonb_build_object('exercise_name', 'Tyler Twist (Wrist Rehab)', 'note', 'Rehab — al final', 'sets', 2, 'reps', '15', 'rest_sec', 45),
     jsonb_build_object('exercise_name', 'Wrist Roller', 'note', 'Rehab — al final', 'sets', 2, 'reps', '3 vueltas', 'rest_sec', 45)
@@ -82,7 +83,8 @@ values (
     jsonb_build_object('exercise_name', 'Incline DB Press', 'superset_with', 'Face Pulls', 'sets', 4, 'reps', '5-8', 'rest_sec', 120, 'note', 'Aumentar peso vs Phase 1'),
     jsonb_build_object('exercise_name', 'Weighted Dips', 'sets', 4, 'reps', '5-7', 'rest_sec', 150, 'note', '+15-20kg cinturón'),
     jsonb_build_object('exercise_name', 'Landmine Press', 'sets', 3, 'reps', '8-10', 'rest_sec', 90, 'per_side', true),
-    jsonb_build_object('exercise_name', 'Explosive Push-up', 'sets', 3, 'reps', '6-8', 'rest_sec', 90),
+    jsonb_build_object('exercise_name', 'Explosive Push-up', 'superset_with', 'Lateral Raise', 'sets', 3, 'reps', '6-8', 'rest_sec', 0),
+    jsonb_build_object('exercise_name', 'Lateral Raise', 'superset_with', 'Explosive Push-up', 'sets', 3, 'reps', '10-12', 'rest_sec', 90, 'note', 'Cable o mancuerna'),
     jsonb_build_object('exercise_name', 'Tyler Twist (Wrist Rehab)', 'note', 'Rehab', 'sets', 2, 'reps', '15', 'rest_sec', 45),
     jsonb_build_object('exercise_name', 'Wrist Roller', 'note', 'Rehab', 'sets', 3, 'reps', '3 vueltas', 'rest_sec', 45)
   )
