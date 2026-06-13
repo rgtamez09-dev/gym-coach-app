@@ -9,16 +9,16 @@ export default function RestTimer() {
   const display = `${mins}:${secs.toString().padStart(2, '0')}`
 
   return (
-    <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)]/50 rounded-2xl p-4 mb-4 flex items-center justify-between">
-      <div>
+    <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)]/50 rounded-xl px-4 py-2.5 mb-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide">Descanso</p>
-        <p className="text-[var(--color-gym-accent)] font-mono text-4xl font-bold leading-none mt-1">
+        <p className="text-[var(--color-gym-accent)] font-mono text-2xl font-bold leading-none">
           {display}
         </p>
       </div>
       <button
         onClick={stopTimer}
-        className="text-[var(--color-gym-muted)] hover:text-[var(--color-gym-text)] text-sm border border-[var(--color-gym-border)] rounded-lg px-3 py-2 transition-colors"
+        className="text-[var(--color-gym-muted)] hover:text-[var(--color-gym-text)] text-xs border border-[var(--color-gym-border)] rounded-lg px-2.5 py-1.5 transition-colors"
       >
         Saltar
       </button>

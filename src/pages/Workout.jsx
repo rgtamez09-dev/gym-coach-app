@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
-import { getCurrentWeek, getCurrentPhase, PROGRESSION_RULES } from '../data/plan'
+import { getCurrentWeek, getCurrentPhase } from '../data/plan'
 import RestTimer from '../components/RestTimer'
 import TechniqueModal from '../components/TechniqueModal'
 import SubstituteModal from '../components/SubstituteModal'
+import SessionPlanModal from '../components/SessionPlanModal'
 
 const isRehabOrWarmup = (note) =>
   note?.toLowerCase().includes('warm-up') || note?.toLowerCase().includes('rehab')
@@ -17,8 +18,18 @@ const RPE_LABELS = {
   9: 'Muy difícil',
   10: 'Máximo',
 }
-
 const RPE_EMOJI = { 6: '😐', 7: '😤', 8: '😓', 9: '😵', 10: '💀' }
+
+function getRepRangeMax(repsStr) {
+  if (!repsStr) return null
+  const nums = String(repsStr).match(/\d+/g)
+  if (!nums) return null
+  return parseInt(nums[nums.length - 1], 10)
+}
+
+function getRpeThreshold(phase) {
+  return phase === 1 ? 7 : phase === 2 ? 8 : 9
+}
 
 export default function Workout() {
   const navigate = useNavigate()
@@ -27,6 +38,7 @@ export default function Workout() {
     currentExerciseIdx,
     nextExercise,
     prevExercise,
+    goToExercise,
     startTimer,
     clearSession,
   } = useWorkoutStore()
@@ -39,6 +51,7 @@ export default function Workout() {
   const [rpe, setRpe] = useState(7)
   const [showTechnique, setShowTechnique] = useState(false)
   const [showSubstitute, setShowSubstitute] = useState(false)
+  const [showPlan, setShowPlan] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [logError, setLogError] = useState(false)
   const [finishError, setFinishError] = useState(false)
@@ -46,11 +59,15 @@ export default function Workout() {
 
   const currentWeek = getCurrentWeek()
   const currentPhase = getCurrentPhase(currentWeek)
-  const progressionRule = PROGRESSION_RULES[currentPhase]
 
   const exercise = activeSession?.exercises?.[currentExerciseIdx]
   const exerciseInfo = exercise ? exerciseMap[exercise.exercise_name] : null
   const isRehab = isRehabOrWarmup(exercise?.note)
+  const isPerSide = exercise?.per_side || String(exercise?.reps || '').includes('c/u')
+
+  const supersetPartnerIdx = exercise?.superset_with
+    ? activeSession?.exercises.findIndex((e) => e.exercise_name === exercise.superset_with)
+    : -1
 
   const fetchExercises = async () => {
     const { data } = await supabase.from('exercises').select('*')
@@ -141,28 +158,37 @@ export default function Workout() {
   const currentSets = sessionSets.filter((s) => s.exercise_name === exercise.exercise_name)
   const suggestedWeight = prevSets[0]?.weight_kg ?? null
 
+  const maxReps = getRepRangeMax(exercise.reps)
+  const rpeThreshold = getRpeThreshold(currentPhase)
+  const shouldShowProgressionHint = !isRehab &&
+    maxReps !== null &&
+    prevSets.length >= exercise.sets &&
+    prevSets.slice(0, exercise.sets).every((s) =>
+      s.reps != null && s.reps >= maxReps && s.rpe != null && s.rpe <= rpeThreshold
+    )
+
   return (
     <div className="min-h-screen bg-[var(--color-gym-bg)] pb-8">
       <div className="max-w-lg mx-auto px-4">
-        {/* Header */}
-        <div className="pt-6 pb-4 flex items-start justify-between">
-          <div className="flex-1 mr-3">
-            <p className="text-[var(--color-gym-muted)] text-xs mb-0.5">
-              {currentExerciseIdx + 1} / {activeSession.exercises.length}
+
+        {/* ── Header: exercise name as hero ── */}
+        <div className="pt-6 pb-3 text-center">
+          <p className="text-[var(--color-gym-muted)] text-xs mb-1">
+            {currentExerciseIdx + 1} / {activeSession.exercises.length}
+          </p>
+          <h2 className="text-[var(--color-gym-text)] font-bold text-3xl leading-tight mb-1">
+            {exercise.exercise_name}
+          </h2>
+          {exercise.note && (
+            <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">{exercise.note}</p>
+          )}
+          {exerciseInfo?.muscle_groups?.length > 0 && (
+            <p className="text-[var(--color-gym-muted)] text-xs mt-1">
+              {exerciseInfo.muscle_groups.join(' · ')}
             </p>
-            <h2 className="text-[var(--color-gym-text)] font-bold text-xl leading-tight">
-              {exercise.exercise_name}
-            </h2>
-            {exercise.superset_with && (
-              <p className="text-[var(--color-gym-accent)] text-xs mt-0.5">
-                Superset con {exercise.superset_with}
-              </p>
-            )}
-            {exercise.note && (
-              <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">{exercise.note}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5 shrink-0">
+          )}
+          {/* Action buttons row */}
+          <div className="flex gap-2 justify-center mt-3 flex-wrap">
             <button
               onClick={() => setShowTechnique(true)}
               disabled={!exerciseInfo}
@@ -176,10 +202,36 @@ export default function Workout() {
             >
               Sustituir
             </button>
+            <button
+              onClick={() => setShowPlan(true)}
+              className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-xl px-3 py-2 text-[var(--color-gym-muted)] text-sm hover:border-[var(--color-gym-accent)] transition-colors"
+            >
+              Ver plan
+            </button>
           </div>
         </div>
 
-        {/* Rehab / Warm-up badge */}
+        {/* ── Superset banner ── */}
+        {exercise.superset_with && (
+          <div className="bg-[var(--color-gym-accent)]/10 border border-[var(--color-gym-accent)]/30 rounded-xl p-3 mb-3 text-center">
+            <p className="text-[var(--color-gym-accent)] text-xs font-bold uppercase tracking-wider">
+              SUPERSET — alterna con {exercise.superset_with}
+            </p>
+            <p className="text-[var(--color-gym-muted)] text-xs mt-1">
+              1 serie aquí → 1 serie de {exercise.superset_with} → descansa → repite. Registra cada ejercicio en su pantalla.
+            </p>
+            {supersetPartnerIdx >= 0 && (
+              <button
+                onClick={() => goToExercise(supersetPartnerIdx)}
+                className="mt-2 text-[var(--color-gym-accent)] text-xs font-semibold border border-[var(--color-gym-accent)]/50 rounded-lg px-3 py-1.5 hover:bg-[var(--color-gym-accent)]/10 transition-colors"
+              >
+                Ir a {exercise.superset_with} →
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Rehab / Warm-up badge ── */}
         {isRehab && (
           <div className={`rounded-2xl border p-3 mb-3 flex items-center justify-between ${
             rehabDone[currentExerciseIdx]
@@ -209,7 +261,7 @@ export default function Workout() {
           </div>
         )}
 
-        {/* Target */}
+        {/* ── Target: Sets / Reps / Rest ── */}
         <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-3 mb-3 flex gap-4">
           <div className="text-center flex-1">
             <p className="text-[var(--color-gym-muted)] text-xs">Series</p>
@@ -219,6 +271,9 @@ export default function Workout() {
           <div className="text-center flex-1">
             <p className="text-[var(--color-gym-muted)] text-xs">Reps</p>
             <p className="text-[var(--color-gym-text)] font-bold text-xl">{exercise.reps}</p>
+            {isPerSide && (
+              <p className="text-[var(--color-gym-accent)] text-[10px] leading-tight">× por lado</p>
+            )}
           </div>
           <div className="w-px bg-[var(--color-gym-border)]" />
           <div className="text-center flex-1">
@@ -227,18 +282,20 @@ export default function Workout() {
           </div>
         </div>
 
-        {/* Progression rule — only for non-rehab exercises */}
-        {!isRehab && progressionRule && (
-          <div className="bg-[var(--color-gym-accent)]/5 border border-[var(--color-gym-accent)]/20 rounded-xl px-3 py-2 mb-4">
-            <p className="text-[var(--color-gym-muted)] text-[10px] uppercase tracking-wide mb-0.5">Regla de progresión (Fase {currentPhase})</p>
-            <p className="text-[var(--color-gym-text)] text-xs leading-relaxed">{progressionRule}</p>
+        {/* ── Progression hint (contextual — only when earned) ── */}
+        {shouldShowProgressionHint && (
+          <div className="bg-[var(--color-gym-success)]/10 border border-[var(--color-gym-success)]/40 rounded-xl px-3 py-2.5 mb-3 text-center">
+            <p className="text-[var(--color-gym-success)] font-semibold text-sm">⬆️ Sube 2.5 kg esta sesión</p>
+            <p className="text-[var(--color-gym-muted)] text-xs mt-0.5">
+              Alcanzaste el tope del rango con RPE ≤ {rpeThreshold} la sesión anterior
+            </p>
           </div>
         )}
 
-        {/* Rest Timer */}
+        {/* ── Rest timer (compact) ── */}
         <RestTimer />
 
-        {/* Previous session sets */}
+        {/* ── Previous session sets ── */}
         {prevSets.length > 0 && (
           <div className="mb-4">
             <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-2">
@@ -257,7 +314,7 @@ export default function Workout() {
           </div>
         )}
 
-        {/* Sets logged this session */}
+        {/* ── Sets logged this session ── */}
         {currentSets.length > 0 && (
           <div className="mb-4">
             <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-2">
@@ -283,7 +340,7 @@ export default function Workout() {
           </div>
         )}
 
-        {/* Log set form */}
+        {/* ── Log set form ── */}
         <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-4 mb-4">
           <p className="text-[var(--color-gym-muted)] text-xs mb-3">
             Serie {currentSets.length + 1}
@@ -293,6 +350,12 @@ export default function Workout() {
               </span>
             )}
           </p>
+
+          {isPerSide && (
+            <p className="text-[var(--color-gym-accent)] text-xs mb-3 text-center">
+              Registra las reps de un solo lado
+            </p>
+          )}
 
           <div className="flex gap-3 mb-4">
             <div className="flex-1">
@@ -307,7 +370,9 @@ export default function Workout() {
               />
             </div>
             <div className="flex-1">
-              <label className="text-[var(--color-gym-muted)] text-xs block mb-1">Reps</label>
+              <label className="text-[var(--color-gym-muted)] text-xs block mb-1">
+                Reps{isPerSide ? ' (un lado)' : ''}
+              </label>
               <input
                 type="number"
                 inputMode="numeric"
@@ -356,7 +421,7 @@ export default function Workout() {
           )}
         </div>
 
-        {/* Navigate exercises */}
+        {/* ── Navigate exercises ── */}
         <div className="flex gap-3 mb-4">
           <button
             onClick={prevExercise}
@@ -374,7 +439,7 @@ export default function Workout() {
           </button>
         </div>
 
-        {/* Finish */}
+        {/* ── Finish ── */}
         <button
           onClick={finishSession}
           disabled={finishing}
@@ -392,13 +457,21 @@ export default function Workout() {
       {showTechnique && exerciseInfo && (
         <TechniqueModal exercise={exerciseInfo} onClose={() => setShowTechnique(false)} />
       )}
-
       {showSubstitute && (
         <SubstituteModal
           exerciseIdx={currentExerciseIdx}
           exerciseName={exercise.exercise_name}
           exerciseInfo={exerciseInfo}
           onClose={() => setShowSubstitute(false)}
+        />
+      )}
+      {showPlan && (
+        <SessionPlanModal
+          exercises={activeSession.exercises}
+          sessionSets={sessionSets}
+          currentIdx={currentExerciseIdx}
+          onNavigate={goToExercise}
+          onClose={() => setShowPlan(false)}
         />
       )}
     </div>

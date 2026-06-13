@@ -22,6 +22,13 @@ export const useWorkoutStore = create((set, get) => ({
       set({ currentExerciseIdx: currentExerciseIdx - 1 })
   },
 
+  goToExercise: (idx) => {
+    const { activeSession } = get()
+    if (!activeSession) return
+    if (idx >= 0 && idx < activeSession.exercises.length)
+      set({ currentExerciseIdx: idx })
+  },
+
   startTimer: (seconds) => {
     const existing = get()._timerInterval
     if (existing) clearInterval(existing)
