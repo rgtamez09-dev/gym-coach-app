@@ -31,7 +31,7 @@ update session_templates
 set exercise_list = (
   select jsonb_agg(
     case when elem->>'exercise_name' = 'Plantar Fascia Circuit'
-      then jsonb_build_object('exercise_name','Standing Calf Stretch','note','Movilidad pie/pantorrilla — al final','sets',2,'reps','30s + 12','rest_sec',30)
+      then jsonb_build_object('exercise_name','Standing Calf Stretch','note','Movilidad pie/pantorrilla — al final','sets',2,'reps','30s + 12','rest_sec',0)
       else elem end
   )
   from jsonb_array_elements(exercise_list) elem
