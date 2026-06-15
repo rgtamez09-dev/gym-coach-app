@@ -101,13 +101,14 @@ export default function Dashboard() {
 
   const handleStartSession = async () => {
     if (!template) return
+    if (activeSession) return
     setStarting(true)
     setStartError(false)
     const today = new Date().toISOString().split('T')[0]
 
     // Lookup-before-insert: resume an existing incomplete session for this
     // template today instead of creating a duplicate (prevents ghost rows).
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from('sessions')
       .select('*')
       .eq('user_id', user.id)
@@ -116,6 +117,14 @@ export default function Dashboard() {
       .eq('completed', false)
       .order('created_at', { ascending: false })
       .limit(1)
+
+    // If the lookup itself failed, do NOT fall through to insert — that would
+    // create the duplicate ghost row this block exists to prevent.
+    if (lookupError) {
+      setStartError(true)
+      setStarting(false)
+      return
+    }
 
     if (existing?.length) {
       setActiveSession({ ...existing[0], exercises: template.exercise_list, day_label: template.day_label })
