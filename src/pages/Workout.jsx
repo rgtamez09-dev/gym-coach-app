@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
@@ -7,6 +7,7 @@ import RestTimer from '../components/RestTimer'
 import TechniqueModal from '../components/TechniqueModal'
 import SubstituteModal from '../components/SubstituteModal'
 import SessionPlanModal from '../components/SessionPlanModal'
+import Nav from '../components/Nav'
 
 const isRehabOrWarmup = (note) =>
   note?.toLowerCase().includes('warm-up') || note?.toLowerCase().includes('rehab')
@@ -57,6 +58,8 @@ export default function Workout() {
   const [finishError, setFinishError] = useState(false)
   const [rehabDone, setRehabDone] = useState({})
 
+  const hydratedRef = useRef(false)
+
   const currentWeek = getCurrentWeek()
   const currentPhase = getCurrentPhase(currentWeek)
 
@@ -90,6 +93,21 @@ export default function Workout() {
     setPrevSets(data || [])
   }
 
+  const hydrateSessionSets = async () => {
+    const { data } = await supabase
+      .from('sets')
+      .select('*')
+      .eq('session_id', activeSession.id)
+      .eq('completed', true)
+      .order('created_at', { ascending: true })
+    if (!data) return
+    const idToName = {}
+    Object.values(exerciseMap).forEach((ex) => { idToName[ex.id] = ex.name_en })
+    setSessionSets(
+      data.map((s) => ({ ...s, exercise_name: idToName[s.exercise_id] ?? '' }))
+    )
+  }
+
   useEffect(() => {
     if (!activeSession) {
       navigate('/')
@@ -107,6 +125,15 @@ export default function Workout() {
       setReps('')
     }
   }, [currentExerciseIdx, exerciseInfo?.id])
+
+  useEffect(() => {
+    if (hydratedRef.current) return
+    if (!activeSession?.id) return
+    if (Object.keys(exerciseMap).length === 0) return
+    hydratedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    hydrateSessionSets()
+  }, [activeSession?.id, exerciseMap])
 
   const logSet = async () => {
     if (!exercise) return
@@ -168,7 +195,7 @@ export default function Workout() {
     )
 
   return (
-    <div className="min-h-screen bg-[var(--color-gym-bg)] pb-8">
+    <div className="min-h-screen bg-[var(--color-gym-bg)] pb-24">
       <div className="max-w-lg mx-auto px-4">
 
         {/* ── Header: exercise name as hero ── */}
@@ -474,6 +501,7 @@ export default function Workout() {
           onClose={() => setShowPlan(false)}
         />
       )}
+      <Nav />
     </div>
   )
 }
