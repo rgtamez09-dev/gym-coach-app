@@ -291,4 +291,13 @@ insert into exercises (name_en, name_es, muscle_groups, video_url, description_t
   'Codo ligeramente flexionado (15-20°). Elevar hasta la altura del hombro — no más. Controlar el descenso 2-3s. Cable: tensión constante desde el fondo (superior para hipertrofia). DB: inclinarse 10° hacia adelante para mejor alineación.',
   'Hombro: no superar la línea del hombro. Flexión de codo reduce tensión en el manguito rotador. Empezar con peso muy ligero — el delt medial es pequeño y se sobreestima el peso inicial.',
   'Jeff Nippard / Renaissance Periodization'
+),
+(
+  'Standing Calf Stretch',
+  'Estiramiento de pantorrilla de pie',
+  array['Gemelo', 'Sóleo', 'Fascia plantar'],
+  'https://www.youtube.com/watch?v=Hg2cQGUyQbU',
+  'Contra la pared, pie atrás y talón apoyado: rodilla estirada 30s (estira gemelo y fascia plantar vía mecanismo windlass), luego rodilla ligeramente doblada 30s (estira sóleo). Termina con 10-15 elevaciones de talón lentas, 3s de bajada. Con calzado — no requiere estar descalzo.',
+  'Sustituto de gym para fascitis plantar: trabaja la cadena pantorrilla-fascia sin descalzarse.',
+  'ATG / protocolo fascitis'
 );

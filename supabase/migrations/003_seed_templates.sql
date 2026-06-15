@@ -30,7 +30,7 @@ values (
   1, 1, 8, 'lower', 'Sesión B — Lower + Hip',
   jsonb_build_array(
     jsonb_build_object('exercise_name', 'Seated Tibialis Raise', 'note', 'Warm-up', 'sets', 2, 'reps', '20', 'rest_sec', 30),
-    jsonb_build_object('exercise_name', 'Towel Scrunches', 'note', 'Warm-up fascitis plantar', 'sets', 2, 'reps', '20', 'rest_sec', 30),
+    jsonb_build_object('exercise_name', 'Standing Calf Stretch', 'note', 'Warm-up pie/pantorrilla', 'sets', 2, 'reps', '30s + 12', 'rest_sec', 30),
     jsonb_build_object('exercise_name', 'ATG Split Squat', 'sets', 3, 'reps', '8 c/u', 'rest_sec', 90, 'note', 'Empezar sin peso'),
     jsonb_build_object('exercise_name', 'Leg Press (Inclined)', 'sets', 3, 'reps', '8-10', 'rest_sec', 120),
     jsonb_build_object('exercise_name', 'Romanian Deadlift', 'sets', 3, 'reps', '10-12', 'rest_sec', 90),
@@ -65,7 +65,7 @@ values (
     jsonb_build_object('exercise_name', 'L-Sit Progression', 'sets', 3, 'reps', 'Máx tiempo', 'rest_sec', 60),
     jsonb_build_object('exercise_name', 'Sandbag Bear Hug Squat', 'sets', 3, 'reps', '10', 'rest_sec', 90),
     jsonb_build_object('exercise_name', 'Hip Flexor Protocol ATG', 'note', 'Movilidad — al final', 'sets', 1, 'reps', '10 min', 'rest_sec', 0),
-    jsonb_build_object('exercise_name', 'Plantar Fascia Circuit', 'note', 'Rehab fascitis — al final', 'sets', 1, 'reps', '8 min', 'rest_sec', 0)
+    jsonb_build_object('exercise_name', 'Standing Calf Stretch', 'note', 'Movilidad pie/pantorrilla — al final', 'sets', 2, 'reps', '30s + 12', 'rest_sec', 0)
   )
 );
 
@@ -128,7 +128,7 @@ values (
     jsonb_build_object('exercise_name', 'L-Sit Progression', 'sets', 4, 'reps', 'Máx tiempo', 'rest_sec', 60),
     jsonb_build_object('exercise_name', 'Sandbag Bear Hug Squat', 'sets', 4, 'reps', '8', 'rest_sec', 90),
     jsonb_build_object('exercise_name', 'Hip Flexor Protocol ATG', 'note', 'Movilidad', 'sets', 1, 'reps', '10 min', 'rest_sec', 0),
-    jsonb_build_object('exercise_name', 'Plantar Fascia Circuit', 'note', 'Rehab', 'sets', 1, 'reps', '8 min', 'rest_sec', 0)
+    jsonb_build_object('exercise_name', 'Standing Calf Stretch', 'note', 'Movilidad pie/pantorrilla — al final', 'sets', 2, 'reps', '30s + 12', 'rest_sec', 0)
   )
 );
 
@@ -188,6 +188,6 @@ values (
     jsonb_build_object('exercise_name', 'L-Sit Progression', 'sets', 4, 'reps', 'Máx tiempo', 'rest_sec', 60),
     jsonb_build_object('exercise_name', 'Sandbag Bear Hug Squat', 'sets', 4, 'reps', '6', 'rest_sec', 90, 'note', 'Máxima carga'),
     jsonb_build_object('exercise_name', 'Hip Flexor Protocol ATG', 'note', 'Movilidad', 'sets', 1, 'reps', '10 min', 'rest_sec', 0),
-    jsonb_build_object('exercise_name', 'Plantar Fascia Circuit', 'note', 'Rehab', 'sets', 1, 'reps', '8 min', 'rest_sec', 0)
+    jsonb_build_object('exercise_name', 'Standing Calf Stretch', 'note', 'Movilidad pie/pantorrilla — al final', 'sets', 2, 'reps', '30s + 12', 'rest_sec', 0)
   )
 );
