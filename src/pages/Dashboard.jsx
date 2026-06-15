@@ -32,6 +32,7 @@ export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
   const signOut = useAuthStore((s) => s.signOut)
   const setActiveSession = useWorkoutStore((s) => s.setActiveSession)
+  const activeSession = useWorkoutStore((s) => s.activeSession)
 
   const [template, setTemplate] = useState(null)
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
@@ -103,6 +104,26 @@ export default function Dashboard() {
     setStarting(true)
     setStartError(false)
     const today = new Date().toISOString().split('T')[0]
+
+    // Lookup-before-insert: resume an existing incomplete session for this
+    // template today instead of creating a duplicate (prevents ghost rows).
+    const { data: existing } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('template_id', template.id)
+      .eq('date', today)
+      .eq('completed', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (existing?.length) {
+      setActiveSession({ ...existing[0], exercises: template.exercise_list, day_label: template.day_label })
+      navigate('/workout')
+      setStarting(false)
+      return
+    }
+
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({ user_id: user.id, template_id: template.id, date: today })
@@ -115,7 +136,7 @@ export default function Dashboard() {
       return
     }
 
-    setActiveSession({ ...session, exercises: template.exercise_list })
+    setActiveSession({ ...session, exercises: template.exercise_list, day_label: template.day_label })
     navigate('/workout')
     setStarting(false)
   }
@@ -187,7 +208,31 @@ export default function Dashboard() {
         </div>
 
         {/* Today's session or rest */}
-        {activeType && template ? (
+        {activeSession ? (
+          <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)] rounded-2xl p-4 mb-4">
+            <p className="text-[var(--color-gym-accent)] text-xs uppercase tracking-wide mb-1 font-semibold">
+              Sesión en curso
+            </p>
+            <p className="text-[var(--color-gym-text)] font-semibold text-lg">
+              {activeSession.day_label || 'Sesión activa'}
+            </p>
+            <p className="text-[var(--color-gym-muted)] text-sm mt-0.5">
+              {activeSession.exercises?.length ?? 0} ejercicios · iniciada{' '}
+              {activeSession.created_at
+                ? new Date(activeSession.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                : ''}
+            </p>
+            <button
+              onClick={() => navigate('/workout')}
+              className="mt-4 w-full bg-[var(--color-gym-accent)] hover:bg-[var(--color-gym-accent-hover)] text-white font-semibold py-3 rounded-xl transition-colors"
+            >
+              Reanudar sesión
+            </button>
+            <p className="text-[var(--color-gym-muted)] text-xs mt-2 text-center">
+              Finaliza o descarta tu sesión en curso para empezar otra
+            </p>
+          </div>
+        ) : activeType && template ? (
           <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)]/30 rounded-2xl p-4 mb-4">
             <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-1">
               {selectedType && selectedType !== todayType ? 'Sesión seleccionada' : 'Sesión de hoy'}
