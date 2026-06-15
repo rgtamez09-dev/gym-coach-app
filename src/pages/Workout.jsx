@@ -61,6 +61,11 @@ export default function Workout() {
   const [logError, setLogError] = useState(false)
   const [finishError, setFinishError] = useState(false)
   const [rehabDone, setRehabDone] = useState({})
+  const [editingSetId, setEditingSetId] = useState(null)
+  const [editWeight, setEditWeight] = useState('')
+  const [editReps, setEditReps] = useState('')
+  const [editRpe, setEditRpe] = useState(7)
+  const [editError, setEditError] = useState(false)
 
   const hydratedRef = useRef(false)
 
@@ -204,6 +209,36 @@ export default function Workout() {
     }
     clearSession()
     navigate('/')
+  }
+
+  const startEditSet = (s) => {
+    setEditError(false)
+    setEditingSetId(s.id)
+    setEditWeight(s.weight_kg != null ? String(s.weight_kg) : '')
+    setEditReps(s.reps != null ? String(s.reps) : '')
+    setEditRpe(s.rpe ?? 7)
+  }
+
+  const saveSetEdit = async (setId) => {
+    setEditError(false)
+    const { data, error } = await supabase
+      .from('sets')
+      .update({
+        weight_kg: editWeight !== '' ? parseFloat(editWeight) : 0,
+        reps: editReps !== '' ? parseInt(editReps) : null,
+        rpe: editRpe,
+      })
+      .eq('id', setId)
+      .select()
+      .single()
+    if (error || !data) {
+      setEditError(true)
+      return
+    }
+    setSessionSets((prev) =>
+      prev.map((s) => (s.id === setId ? { ...s, ...data, exercise_name: s.exercise_name } : s))
+    )
+    setEditingSetId(null)
   }
 
   if (!activeSession || !exercise) return null
@@ -374,20 +409,83 @@ export default function Workout() {
               Esta sesión
             </p>
             <div className="space-y-1.5">
-              {currentSets.map((s, i) => (
-                <div
-                  key={i}
-                  className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-success)]/30 rounded-xl px-3 py-2 flex gap-4 text-sm"
-                >
-                  <span className="text-[var(--color-gym-muted)] w-14">Serie {s.set_number}</span>
-                  <span className="text-[var(--color-gym-text)] font-semibold">
-                    {s.weight_kg != null ? `${s.weight_kg} kg` : '— kg'}
-                  </span>
-                  <span className="text-[var(--color-gym-text)]">
-                    {s.reps != null ? `× ${s.reps}` : ''}
-                  </span>
-                  <span className="text-[var(--color-gym-muted)]">RPE {s.rpe}</span>
-                </div>
+              {currentSets.map((s) => (
+                editingSetId === s.id ? (
+                  <div
+                    key={s.id}
+                    className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)] rounded-xl px-3 py-3"
+                  >
+                    <p className="text-[var(--color-gym-muted)] text-xs mb-2">Editar serie {s.set_number}</p>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={editWeight}
+                        onChange={(e) => setEditWeight(e.target.value)}
+                        placeholder="kg"
+                        className="flex-1 bg-[var(--color-gym-bg)] border border-[var(--color-gym-border)] rounded-lg px-2 py-2 text-[var(--color-gym-text)] text-center font-semibold focus:outline-none focus:border-[var(--color-gym-accent)]"
+                      />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={editReps}
+                        onChange={(e) => setEditReps(e.target.value)}
+                        placeholder="reps"
+                        className="flex-1 bg-[var(--color-gym-bg)] border border-[var(--color-gym-border)] rounded-lg px-2 py-2 text-[var(--color-gym-text)] text-center font-semibold focus:outline-none focus:border-[var(--color-gym-accent)]"
+                      />
+                    </div>
+                    <div className="flex gap-1.5 mb-2">
+                      {[6, 7, 8, 9, 10].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setEditRpe(r)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            editRpe === r
+                              ? 'bg-[var(--color-gym-accent)] text-white'
+                              : 'bg-[var(--color-gym-bg)] border border-[var(--color-gym-border)] text-[var(--color-gym-muted)]'
+                          }`}
+                        >
+                          {RPE_EMOJI[r]}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingSetId(null)}
+                        className="flex-1 bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] text-[var(--color-gym-text)] py-2 rounded-lg text-sm"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => saveSetEdit(s.id)}
+                        className="flex-1 bg-[var(--color-gym-accent)] hover:bg-[var(--color-gym-accent-hover)] text-white py-2 rounded-lg text-sm font-semibold"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                    {editError && (
+                      <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+                        No se pudo guardar el cambio. Intenta de nuevo.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    key={s.id}
+                    onClick={() => startEditSet(s)}
+                    className="w-full bg-[var(--color-gym-surface)] border border-[var(--color-gym-success)]/30 rounded-xl px-3 py-2 flex gap-4 text-sm items-center hover:border-[var(--color-gym-accent)] transition-colors text-left"
+                  >
+                    <span className="text-[var(--color-gym-muted)] w-14">Serie {s.set_number}</span>
+                    <span className="text-[var(--color-gym-text)] font-semibold">
+                      {s.weight_kg != null ? `${s.weight_kg} kg` : '— kg'}
+                    </span>
+                    <span className="text-[var(--color-gym-text)]">
+                      {s.reps != null ? `× ${s.reps}` : ''}
+                    </span>
+                    <span className="text-[var(--color-gym-muted)]">RPE {s.rpe}</span>
+                    <span className="text-[var(--color-gym-muted)] text-xs ml-auto">editar ✏️</span>
+                  </button>
+                )
               ))}
             </div>
           </div>
