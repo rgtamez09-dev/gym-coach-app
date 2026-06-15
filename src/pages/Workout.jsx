@@ -8,6 +8,7 @@ import TechniqueModal from '../components/TechniqueModal'
 import SubstituteModal from '../components/SubstituteModal'
 import SessionPlanModal from '../components/SessionPlanModal'
 import Nav from '../components/Nav'
+import ExitSessionModal from '../components/ExitSessionModal'
 
 const isRehabOrWarmup = (note) =>
   note?.toLowerCase().includes('warm-up') || note?.toLowerCase().includes('rehab')
@@ -54,6 +55,7 @@ export default function Workout() {
   const [showSubstitute, setShowSubstitute] = useState(false)
   const [showPlan, setShowPlan] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [showExit, setShowExit] = useState(false)
   const [logError, setLogError] = useState(false)
   const [finishError, setFinishError] = useState(false)
   const [rehabDone, setRehabDone] = useState({})
@@ -176,6 +178,13 @@ export default function Workout() {
       setFinishing(false)
       return
     }
+    clearSession()
+    navigate('/')
+  }
+
+  const discardSession = async () => {
+    await supabase.from('sets').delete().eq('session_id', activeSession.id)
+    await supabase.from('sessions').delete().eq('id', activeSession.id)
     clearSession()
     navigate('/')
   }
@@ -466,13 +475,12 @@ export default function Workout() {
           </button>
         </div>
 
-        {/* ── Finish ── */}
+        {/* ── Exit ── */}
         <button
-          onClick={finishSession}
-          disabled={finishing}
-          className="w-full bg-[var(--color-gym-surface)] border border-[var(--color-gym-danger)]/50 text-[var(--color-gym-danger)] py-3 rounded-xl hover:bg-[var(--color-gym-danger)] hover:text-white transition-colors disabled:opacity-50"
+          onClick={() => setShowExit(true)}
+          className="w-full bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] text-[var(--color-gym-text)] py-3 rounded-xl hover:border-[var(--color-gym-accent)] transition-colors"
         >
-          {finishing ? 'Guardando...' : 'Finalizar sesión'}
+          Salir de la sesión
         </button>
         {finishError && (
           <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
@@ -499,6 +507,15 @@ export default function Workout() {
           currentIdx={currentExerciseIdx}
           onNavigate={goToExercise}
           onClose={() => setShowPlan(false)}
+        />
+      )}
+      {showExit && (
+        <ExitSessionModal
+          finishing={finishing}
+          onClose={() => setShowExit(false)}
+          onResumeLater={() => { setShowExit(false); navigate('/') }}
+          onFinish={finishSession}
+          onDiscard={discardSession}
         />
       )}
       <Nav />
