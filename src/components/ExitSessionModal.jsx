@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ExitSessionModal({ onResumeLater, onFinish, onDiscard, finishing, onClose }) {
+export default function ExitSessionModal({ onResumeLater, onFinish, onDiscard, finishing, discarding, finishError, discardError, onClose }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   return (
@@ -31,6 +31,11 @@ export default function ExitSessionModal({ onResumeLater, onFinish, onDiscard, f
         >
           {finishing ? 'Guardando...' : 'Finalizar y guardar'}
         </button>
+        {finishError && (
+          <p className="text-[var(--color-gym-danger)] text-xs text-center mb-3 -mt-1">
+            No se pudo guardar la sesión. Intenta de nuevo.
+          </p>
+        )}
 
         {!confirmDiscard ? (
           <button
@@ -53,11 +58,17 @@ export default function ExitSessionModal({ onResumeLater, onFinish, onDiscard, f
               </button>
               <button
                 onClick={onDiscard}
-                className="flex-1 bg-[var(--color-gym-danger)] text-white py-2 rounded-xl text-sm font-semibold"
+                disabled={discarding}
+                className="flex-1 bg-[var(--color-gym-danger)] text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
               >
-                Sí, descartar
+                {discarding ? 'Borrando...' : 'Sí, descartar'}
               </button>
             </div>
+            {discardError && (
+              <p className="text-[var(--color-gym-danger)] text-xs mt-2 text-center">
+                No se pudo descartar la sesión. Intenta de nuevo.
+              </p>
+            )}
           </div>
         )}
       </div>

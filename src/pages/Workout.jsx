@@ -56,6 +56,8 @@ export default function Workout() {
   const [showPlan, setShowPlan] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [showExit, setShowExit] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
   const [logError, setLogError] = useState(false)
   const [finishError, setFinishError] = useState(false)
   const [rehabDone, setRehabDone] = useState({})
@@ -183,8 +185,23 @@ export default function Workout() {
   }
 
   const discardSession = async () => {
-    await supabase.from('sets').delete().eq('session_id', activeSession.id)
-    await supabase.from('sessions').delete().eq('id', activeSession.id)
+    if (discarding) return
+    setDiscarding(true)
+    setDiscardError(false)
+    // Delete sets before the session, and only clear the store + leave if both
+    // succeed — otherwise we'd wipe local state while ghost rows survive in DB.
+    const { error: setsErr } = await supabase.from('sets').delete().eq('session_id', activeSession.id)
+    if (setsErr) {
+      setDiscardError(true)
+      setDiscarding(false)
+      return
+    }
+    const { error: sessErr } = await supabase.from('sessions').delete().eq('id', activeSession.id)
+    if (sessErr) {
+      setDiscardError(true)
+      setDiscarding(false)
+      return
+    }
     clearSession()
     navigate('/')
   }
@@ -512,6 +529,9 @@ export default function Workout() {
       {showExit && (
         <ExitSessionModal
           finishing={finishing}
+          discarding={discarding}
+          finishError={finishError}
+          discardError={discardError}
           onClose={() => setShowExit(false)}
           onResumeLater={() => { setShowExit(false); navigate('/') }}
           onFinish={finishSession}
