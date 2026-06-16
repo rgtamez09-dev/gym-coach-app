@@ -1,6 +1,9 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
-export const useWorkoutStore = create((set, get) => ({
+export const useWorkoutStore = create(
+  persist(
+    (set, get) => ({
   activeSession: null,
   currentExerciseIdx: 0,
   timerSeconds: 0,
@@ -72,4 +75,13 @@ export const useWorkoutStore = create((set, get) => ({
       _timerInterval: null,
     })
   },
-}))
+    }),
+    {
+      name: 'gym-workout-session',
+      partialize: (state) => ({
+        activeSession: state.activeSession,
+        currentExerciseIdx: state.currentExerciseIdx,
+      }),
+    }
+  )
+)
