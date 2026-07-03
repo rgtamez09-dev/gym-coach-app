@@ -1,0 +1,66 @@
+name: Supabase Keep-Alive
+
+# Prevents Supabase free-tier from auto-pausing after 7 days of inactivity.
+# Makes a real PostgREST read daily (not just /health) so it counts as compute activity.
+#
+# Trap covered — GitHub disables scheduled workflows after 60 days without repo activity:
+#   On day 1 of each month, commits a heartbeat file to reset the 60-day clock.
+
+on:
+  schedule:
+    # 09:17 UTC daily — off-peak minute avoids GHA saturation spikes at :00
+    - cron: "17 9 * * *"
+  workflow_dispatch: # allow manual trigger for testing
+
+permissions:
+  contents: write # needed for monthly heartbeat commit
+
+jobs:
+  ping:
+    name: Ping Supabase DB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping exercises table (real PostgREST read)
+        env:
+          SUPABASE_URL: https://dtvxtuccnhkdclhyqexl.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          HTTP_STATUS=$(curl -sS --fail-with-body \
+            -o /tmp/sb_response.json \
+            -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/exercises?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Response body: $(cat /tmp/sb_response.json)"
+
+          if [[ "$HTTP_STATUS" -lt 200 || "$HTTP_STATUS" -ge 300 ]]; then
+            echo "ERROR: Supabase returned $HTTP_STATUS — project may be paused."
+            exit 1
+          fi
+
+          echo "OK: Supabase alive, responded $HTTP_STATUS"
+
+      - name: Monthly heartbeat commit (resets 60-day GHA auto-disable clock)
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DAY=$(date +%d)
+          if [ "$DAY" != "01" ]; then
+            echo "Not day 1 (today=$DAY) — skipping heartbeat."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git clone --depth 1 "https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git" /tmp/repo
+          cd /tmp/repo
+          echo "$(date -u +%Y-%m-%d)" > .github/keepalive-heartbeat.txt
+          git add .github/keepalive-heartbeat.txt
+          git diff --staged --quiet && echo "No change needed." && exit 0
+          git commit -m "[skip ci] keepalive heartbeat $(date -u +%Y-%m)"
+          git push
+          echo "Heartbeat committed — 60-day clock reset."
