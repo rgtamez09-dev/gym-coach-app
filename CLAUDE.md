@@ -104,6 +104,18 @@ git push origin develop       # subir cambios
 # luego crear PR en GitHub: develop → main
 ```
 
+## Keep-Alive automático (Supabase free tier)
+
+El workflow `.github/workflows/supabase-keepalive.yml` hace una lectura real a PostgREST (`/rest/v1/exercises?select=id&limit=1`) cada día a las 09:17 UTC, lo que cuenta como actividad y evita que Supabase pause el proyecto (umbral: 7 días sin actividad).
+
+**Verificar que sigue vivo:** GitHub → Actions → "Supabase Keep-Alive" → último run verde.
+**Si el run es rojo:** Supabase probablemente ya está pausado o el secret `SUPABASE_ANON_KEY` expiró.
+**Re-activar manualmente:** Actions → "Supabase Keep-Alive" → "Run workflow".
+
+**Trampa de los 60 días:** GitHub deshabilita los workflows programados si no hay actividad en el repo en 60 días. El workflow mismo lo previene: el día 1 de cada mes hace un commit a `.github/keepalive-heartbeat.txt` que resetea el contador. Si ves cero runs después de 60 días → ir a Actions y re-habilitar el workflow manualmente.
+
+**Secret requerido:** `SUPABASE_ANON_KEY` en repo Settings → Secrets → Actions. Si se perde/expira: obtener la anon key de Supabase Dashboard → Settings → API y volver a ejecutar `gh secret set SUPABASE_ANON_KEY --body <key> --repo rgtamez09-dev/gym-coach-app`.
+
 ## Ajustes al plan de entrenamiento
 
 Para cambiar ejercicios, añadir músculo o sustituir algo del gym, decirlo directamente en la terminal de Claude Code. Los cambios en los templates se hacen vía Supabase SQL o actualizando el seed.
