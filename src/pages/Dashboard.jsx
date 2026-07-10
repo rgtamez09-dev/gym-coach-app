@@ -2,10 +2,20 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
+import { useProgramStore } from '../store/programStore'
 import { supabase } from '../lib/supabase'
-import { getCurrentWeek, getCurrentPhase, getTodayDayType, getMondayOfCurrentWeek } from '../data/plan'
+import { getPhaseForWeek, getTodayDayType } from '../data/plan'
 import Nav from '../components/Nav'
 import ErrorState from '../components/ErrorState'
+import WeekInitModal from '../components/WeekInitModal'
+import WeekManageSheet from '../components/WeekManageSheet'
+
+const CORE_TYPES = ['push', 'lower', 'pull']
+
+function daysSince(dateStr) {
+  if (!dateStr) return 0
+  return Math.floor((Date.now() - new Date(dateStr + 'T00:00:00').getTime()) / 86400000)
+}
 
 const DAY_LABELS = {
   push: 'Sesión A — Upper Push',
@@ -34,30 +44,46 @@ export default function Dashboard() {
   const setActiveSession = useWorkoutStore((s) => s.setActiveSession)
   const activeSession = useWorkoutStore((s) => s.activeSession)
 
+  const planWeek = useProgramStore((s) => s.planWeek)
+  const weekStartedOn = useProgramStore((s) => s.weekStartedOn)
+  const programLoading = useProgramStore((s) => s.loading)
+  const programError = useProgramStore((s) => s.error)
+  const needsInit = useProgramStore((s) => s.needsInit)
+  const initDefaultWeek = useProgramStore((s) => s.initDefaultWeek)
+  const initProgram = useProgramStore((s) => s.initProgram)
+  const setWeek = useProgramStore((s) => s.setWeek)
+  const loadProgram = useProgramStore((s) => s.loadProgram)
+
   const [template, setTemplate] = useState(null)
-  const [sessionsThisWeek, setSessionsThisWeek] = useState(0)
+  const [doneTypes, setDoneTypes] = useState([])
   const [lastPR, setLastPR] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState(false)
   const [selectedType, setSelectedType] = useState(null)
+  const [showManage, setShowManage] = useState(false)
+  const [advanceDismissed, setAdvanceDismissed] = useState(false)
+  const [pauseDismissed, setPauseDismissed] = useState(false)
 
-  const week = getCurrentWeek()
-  const phase = getCurrentPhase(week)
+  const week = planWeek
+  const phase = planWeek != null ? getPhaseForWeek(planWeek) : 1
   const todayType = getTodayDayType()
   const activeType = selectedType ?? todayType
 
   const fetchDashboardData = useCallback(async () => {
     setError(false)
     try {
-      const [countRes, prRes] = await Promise.all([
+      const [weekRes, prRes] = await Promise.all([
+        // Weekly progress counts against the PLAN week's current attempt:
+        // sessions of this plan_week logged since the week (re)started.
         supabase
           .from('sessions')
-          .select('id', { count: 'exact', head: true })
+          .select('id, session_templates(day_type)')
           .eq('user_id', user.id)
           .eq('completed', true)
-          .gte('date', getMondayOfCurrentWeek()),
+          .eq('plan_week', planWeek)
+          .gte('date', weekStartedOn),
 
         supabase
           .from('sets')
@@ -69,25 +95,28 @@ export default function Dashboard() {
           .limit(1),
       ])
 
-      if (countRes.error || prRes.error) throw new Error('fetch failed')
+      if (weekRes.error || prRes.error) throw new Error('fetch failed')
 
-      setSessionsThisWeek(countRes.count || 0)
+      setDoneTypes(
+        [...new Set((weekRes.data || []).map((s) => s.session_templates?.day_type).filter(Boolean))]
+      )
       if (prRes.data?.length) setLastPR(prRes.data[0])
     } catch {
       setError(true)
     } finally {
       setLoading(false)
     }
-  }, [user.id])
+  }, [user.id, planWeek, weekStartedOn])
 
   useEffect(() => {
+    if (planWeek == null) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData()
-  }, [fetchDashboardData])
+  }, [planWeek, fetchDashboardData])
 
   useEffect(() => {
     const loadTemplate = async () => {
-      if (!activeType) { setTemplate(null); return }
+      if (!activeType || planWeek == null) { setTemplate(null); return }
       const { data } = await supabase
         .from('session_templates')
         .select('*')
@@ -97,10 +126,10 @@ export default function Dashboard() {
       setTemplate(data?.length ? data[0] : null)
     }
     loadTemplate()
-  }, [activeType, phase])
+  }, [activeType, phase, planWeek])
 
   const handleStartSession = async () => {
-    if (!template) return
+    if (!template || planWeek == null) return
     if (activeSession) return
     setStarting(true)
     setStartError(false)
@@ -135,7 +164,7 @@ export default function Dashboard() {
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .insert({ user_id: user.id, template_id: template.id, date: today })
+      .insert({ user_id: user.id, template_id: template.id, date: today, plan_week: planWeek })
       .select()
       .single()
 
@@ -150,7 +179,19 @@ export default function Dashboard() {
     setStarting(false)
   }
 
-  if (loading) {
+  if (needsInit) {
+    return (
+      <div className="min-h-screen bg-[var(--color-gym-bg)]">
+        <WeekInitModal
+          defaultWeek={initDefaultWeek}
+          onConfirm={(w) => initProgram(user.id, w)}
+        />
+        <Nav />
+      </div>
+    )
+  }
+
+  if (loading || programLoading) {
     return (
       <div className="min-h-screen bg-[var(--color-gym-bg)] flex items-center justify-center">
         <p className="text-[var(--color-gym-muted)]">Cargando...</p>
@@ -158,14 +199,19 @@ export default function Dashboard() {
     )
   }
 
-  if (error) {
+  if (error || programError) {
     return (
       <div className="min-h-screen bg-[var(--color-gym-bg)] flex flex-col items-center justify-center px-4 gap-4">
-        <ErrorState onRetry={fetchDashboardData} />
+        <ErrorState onRetry={() => (programError ? loadProgram(user.id) : fetchDashboardData())} />
         <Nav />
       </div>
     )
   }
+
+  const coreComplete = CORE_TYPES.every((t) => doneTypes.includes(t))
+  const showAdvanceBanner = coreComplete && !advanceDismissed && week < 24
+  const showPauseBanner =
+    !coreComplete && doneTypes.length === 0 && daysSince(weekStartedOn) > 14 && !pauseDismissed
 
   return (
     <div className="min-h-screen bg-[var(--color-gym-bg)] pb-24">
@@ -184,7 +230,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Phase + Week */}
+        {/* Phase + Week (plan week — user-controlled, not calendar) */}
         <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-4 mb-4">
           <div className="flex justify-between items-start">
             <div>
@@ -196,25 +242,88 @@ export default function Dashboard() {
               <p className="text-[var(--color-gym-accent)] font-bold text-3xl leading-none mt-0.5">{week}</p>
             </div>
           </div>
-          <div className="mt-4 flex gap-1.5">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i < sessionsThisWeek ? 'bg-[var(--color-gym-accent)]' : 'bg-[var(--color-gym-border)]'
-                }`}
-              />
-            ))}
+          <div className="mt-4 grid grid-cols-4 gap-1.5">
+            {SESSION_TYPES.map(({ type, label }) => {
+              const done = doneTypes.includes(type)
+              const [letter, name] = label.split(' · ')
+              return (
+                <div
+                  key={type}
+                  className={`rounded-xl py-1.5 text-center transition-colors ${
+                    done
+                      ? 'bg-[var(--color-gym-accent)]/20 text-[var(--color-gym-accent)]'
+                      : 'bg-[var(--color-gym-border)]/30 text-[var(--color-gym-muted)]'
+                  }`}
+                >
+                  <p className="text-sm font-bold leading-none">{letter} {done ? '✓' : '·'}</p>
+                  <p className="text-[9px] mt-0.5 opacity-80">{name}</p>
+                </div>
+              )
+            })}
           </div>
           <p className="text-[var(--color-gym-muted)] text-xs mt-1.5">
-            {sessionsThisWeek} de 4 sesiones esta semana
+            {doneTypes.length} de 4 sesiones esta semana · D es opcional
           </p>
-          {sessionsThisWeek === 0 && (
+          {doneTypes.length === 0 && (
             <p className="text-[var(--color-gym-accent)] text-xs mt-1">
               Elige una sesión abajo y empieza tu primera sesión de la semana
             </p>
           )}
+          <button
+            onClick={() => setShowManage(true)}
+            className="mt-3 text-[var(--color-gym-muted)] text-xs hover:text-[var(--color-gym-text)] transition-colors"
+          >
+            Gestionar semana (avanzar · repetir · elegir) →
+          </button>
         </div>
+
+        {/* Week complete — suggest advancing (calendar never decides) */}
+        {showAdvanceBanner && (
+          <div className="bg-[var(--color-gym-success)]/10 border border-[var(--color-gym-success)]/40 rounded-2xl p-4 mb-4">
+            <p className="text-[var(--color-gym-success)] font-semibold text-sm">Semana {week} completa 💪</p>
+            <p className="text-[var(--color-gym-muted)] text-xs mt-0.5">
+              A, B y C hechas — ¿avanzar a la semana {week + 1}?
+            </p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setWeek(user.id, week + 1)}
+                className="flex-1 bg-[var(--color-gym-success)] text-white font-semibold py-2.5 rounded-xl text-sm"
+              >
+                Avanzar
+              </button>
+              <button
+                onClick={() => setAdvanceDismissed(true)}
+                className="flex-1 bg-[var(--color-gym-bg)] border border-[var(--color-gym-border)] text-[var(--color-gym-text)] py-2.5 rounded-xl text-sm"
+              >
+                Aún no
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Coming back after a pause — always positive tone */}
+        {showPauseBanner && (
+          <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-accent)]/30 rounded-2xl p-4 mb-4">
+            <p className="text-[var(--color-gym-text)] font-semibold text-sm">Retomando después de una pausa 👋</p>
+            <p className="text-[var(--color-gym-muted)] text-xs mt-0.5">
+              ¿Seguir en la semana {week} o repetirla desde cero?
+            </p>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setPauseDismissed(true)}
+                className="flex-1 bg-[var(--color-gym-accent)] text-white font-semibold py-2.5 rounded-xl text-sm"
+              >
+                Seguir en semana {week}
+              </button>
+              <button
+                onClick={() => { setWeek(user.id, week); setPauseDismissed(true) }}
+                className="flex-1 bg-[var(--color-gym-bg)] border border-[var(--color-gym-border)] text-[var(--color-gym-text)] py-2.5 rounded-xl text-sm"
+              >
+                Repetir
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Today's session or rest */}
         {activeSession ? (
@@ -307,6 +416,13 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      {showManage && (
+        <WeekManageSheet
+          planWeek={week}
+          onSetWeek={(w) => setWeek(user.id, w)}
+          onClose={() => setShowManage(false)}
+        />
+      )}
       <Nav />
     </div>
   )

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkoutStore } from '../store/workoutStore'
+import { useProgramStore } from '../store/programStore'
 import { supabase } from '../lib/supabase'
-import { getCurrentWeek, getCurrentPhase } from '../data/plan'
+import { getPhaseForWeek } from '../data/plan'
 import RestTimer from '../components/RestTimer'
 import TechniqueModal from '../components/TechniqueModal'
 import SubstituteModal from '../components/SubstituteModal'
@@ -72,8 +73,8 @@ export default function Workout() {
 
   const activeSessionId = activeSession?.id ?? null
 
-  const currentWeek = getCurrentWeek()
-  const currentPhase = getCurrentPhase(currentWeek)
+  const planWeek = useProgramStore((s) => s.planWeek)
+  const currentPhase = getPhaseForWeek(planWeek ?? 1)
 
   const exercise = activeSession?.exercises?.[currentExerciseIdx]
   const exerciseInfo = exercise ? exerciseMap[exercise.exercise_name] : null

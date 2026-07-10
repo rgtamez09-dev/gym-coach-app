@@ -1,6 +1,12 @@
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentWeek, getCurrentPhase } from '../data/plan'
+import { getCurrentWeek, getPhaseForWeek } from '../data/plan'
+import { useProgramStore } from '../store/programStore'
+import { useAuthStore } from '../store/authStore'
+import { supabase } from '../lib/supabase'
 import Nav from '../components/Nav'
+
+const CORE_TYPES = ['push', 'lower', 'pull']
 
 const PHASE_LABELS = {
   1: 'Phase 1 — Foundation + Rehab',
@@ -39,8 +45,39 @@ const WEEK_SCHEDULE = [
 ]
 
 export default function Program() {
-  const currentWeek = getCurrentWeek()
-  const currentPhase = getCurrentPhase(currentWeek)
+  const user = useAuthStore((s) => s.user)
+  const planWeek = useProgramStore((s) => s.planWeek)
+  const currentWeek = planWeek ?? 1
+  const currentPhase = getPhaseForWeek(currentWeek)
+  const calendarWeek = getCurrentWeek()
+
+  // Real training history per plan week (checkmarks come from sessions done,
+  // never from dates gone by).
+  const [weekProgress, setWeekProgress] = useState({})
+
+  const fetchWeekProgress = useCallback(async () => {
+    const { data } = await supabase
+      .from('sessions')
+      .select('plan_week, session_templates(day_type)')
+      .eq('user_id', user.id)
+      .eq('completed', true)
+      .not('plan_week', 'is', null)
+    if (!data) return
+    const byWeek = {}
+    data.forEach((s) => {
+      const w = s.plan_week
+      const t = s.session_templates?.day_type
+      if (!w || !t) return
+      if (!byWeek[w]) byWeek[w] = []
+      if (!byWeek[w].includes(t)) byWeek[w].push(t)
+    })
+    setWeekProgress(byWeek)
+  }, [user.id])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchWeekProgress()
+  }, [fetchWeekProgress])
 
   return (
     <div className="min-h-screen bg-[var(--color-gym-bg)] pb-24">
@@ -62,6 +99,9 @@ export default function Program() {
               <p className="text-[var(--color-gym-accent)] font-bold text-4xl leading-none mt-0.5">{currentWeek}</p>
             </div>
           </div>
+          <p className="text-[var(--color-gym-muted)] text-[10px] mt-2">
+            Semana de calendario: {calendarWeek} — tu semana de plan avanza cuando tú lo decides
+          </p>
         </div>
 
         {/* Weekly schedule */}
@@ -115,19 +155,27 @@ export default function Program() {
                 <div className="p-3 bg-[var(--color-gym-bg)] grid grid-cols-4 gap-1.5">
                   {Array.from({ length: end - start + 1 }, (_, i) => start + i).map((week) => {
                     const isNow = week === currentWeek
-                    const past = week < currentWeek
+                    const types = weekProgress[week] || []
+                    const coreDone = CORE_TYPES.every((t) => types.includes(t))
                     return (
                       <div
                         key={week}
                         className={`rounded-xl py-2 px-1 text-center text-xs ${
                           isNow
                             ? 'bg-[var(--color-gym-accent)] text-white font-bold'
-                            : past
-                            ? 'bg-[var(--color-gym-surface)] text-[var(--color-gym-muted)]'
+                            : coreDone
+                            ? 'bg-[var(--color-gym-surface)] text-[var(--color-gym-success)]'
                             : 'bg-[var(--color-gym-surface)] text-[var(--color-gym-text)]'
                         }`}
                       >
                         <p className="font-semibold">Sem {week}</p>
+                        {coreDone ? (
+                          <p className="text-[9px] mt-0.5">✓ hecha</p>
+                        ) : types.length > 0 ? (
+                          <p className="text-[9px] mt-0.5 opacity-80">
+                            {CORE_TYPES.filter((t) => types.includes(t)).length}/3
+                          </p>
+                        ) : null}
                         {week === 23 && <p className="text-[9px] mt-0.5 opacity-80">Deload</p>}
                       </div>
                     )

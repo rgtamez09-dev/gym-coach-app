@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { useProgramStore } from './store/programStore'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Workout from './pages/Workout'
@@ -28,6 +29,11 @@ function AuthGuard({ children }) {
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
+  const userId = useAuthStore((s) => s.user?.id ?? null)
+
+  useEffect(() => {
+    if (userId) useProgramStore.getState().loadProgram(userId)
+  }, [userId])
 
   useEffect(() => {
     initialize()
