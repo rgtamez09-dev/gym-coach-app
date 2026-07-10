@@ -1,16 +1,16 @@
 # Gym Coach App
 
-App web personal de entrenamiento de gym con plan de 6 meses personalizado. Stack: React 18 + Vite + Tailwind CSS + Zustand + Supabase + Netlify.
+App web personal de entrenamiento de gym con plan de 6 meses personalizado. Stack: React 19 + Vite + Tailwind CSS + Zustand + Supabase + Netlify.
 
 ## Stack técnico
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React 18 + Vite |
+| Frontend | React 19 + Vite |
 | Estilos | Tailwind CSS v4 (plugin Vite, sin config file) |
 | Estado | Zustand |
 | Base de datos | Supabase (PostgreSQL) — project ref: dtvxtuccnhkdclhyqexl |
-| Auth | Supabase Auth (magic link por email) |
+| Auth | Supabase Auth (email + contraseña; magic link solo como recovery) |
 | Deploy | Netlify (free tier) |
 
 **Idioma:** UI en español, nombres de ejercicios en inglés.
@@ -38,7 +38,6 @@ src/
   pages/        → Dashboard, Workout, Program, Exercises, Progress, Nutrition
   components/   → Componentes reutilizables (modals, cards, nav, timer)
   store/        → Zustand stores (auth, workout, program)
-  hooks/        → Custom hooks (useSession, useSets, useExercises, useProgress)
   data/         → Constantes del plan (fases, sustitutos de ejercicios)
 ```
 

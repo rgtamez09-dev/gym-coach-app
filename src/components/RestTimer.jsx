@@ -1,7 +1,19 @@
+import { useEffect } from 'react'
 import { useWorkoutStore } from '../store/workoutStore'
 
 export default function RestTimer() {
-  const { timerSeconds, timerActive, stopTimer } = useWorkoutStore()
+  const { timerSeconds, timerActive, stopTimer, syncTimer } = useWorkoutStore()
+
+  // Intervals stay suspended while the screen is locked — resync from the
+  // deadline as soon as the app is visible again instead of waiting a tick.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') syncTimer()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [syncTimer])
+
   if (!timerActive && timerSeconds === 0) return null
 
   const mins = Math.floor(timerSeconds / 60)

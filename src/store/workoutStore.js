@@ -6,12 +6,17 @@ export const useWorkoutStore = create(
     (set, get) => ({
   activeSession: null,
   currentExerciseIdx: 0,
+  rehabDone: {},
   timerSeconds: 0,
   timerActive: false,
+  timerDeadline: null,
   _timerInterval: null,
 
   setActiveSession: (session) =>
-    set({ activeSession: session, currentExerciseIdx: 0 }),
+    set({ activeSession: session, currentExerciseIdx: 0, rehabDone: {} }),
+
+  toggleRehabDone: (idx) =>
+    set({ rehabDone: { ...get().rehabDone, [idx]: !get().rehabDone[idx] } }),
 
   nextExercise: () => {
     const { activeSession, currentExerciseIdx } = get()
@@ -35,24 +40,31 @@ export const useWorkoutStore = create(
   startTimer: (seconds) => {
     const existing = get()._timerInterval
     if (existing) clearInterval(existing)
-    set({ timerSeconds: seconds, timerActive: true })
-    const interval = setInterval(() => {
-      const remaining = get().timerSeconds
-      if (remaining <= 1) {
-        clearInterval(interval)
-        set({ timerSeconds: 0, timerActive: false, _timerInterval: null })
-        if ('vibrate' in navigator) navigator.vibrate([200, 100, 200])
-      } else {
-        set({ timerSeconds: remaining - 1 })
-      }
-    }, 1000)
+    // Remaining time derives from a deadline, not a decrementing counter —
+    // iOS suspends JS timers on screen lock, which froze the old countdown.
+    const deadline = Date.now() + seconds * 1000
+    set({ timerSeconds: seconds, timerActive: true, timerDeadline: deadline })
+    const interval = setInterval(() => get().syncTimer(), 1000)
     set({ _timerInterval: interval })
+  },
+
+  syncTimer: () => {
+    const { timerActive, timerDeadline, _timerInterval } = get()
+    if (!timerActive || !timerDeadline) return
+    const remaining = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000))
+    if (remaining <= 0) {
+      if (_timerInterval) clearInterval(_timerInterval)
+      set({ timerSeconds: 0, timerActive: false, timerDeadline: null, _timerInterval: null })
+      if ('vibrate' in navigator) navigator.vibrate([200, 100, 200])
+    } else {
+      set({ timerSeconds: remaining })
+    }
   },
 
   stopTimer: () => {
     const interval = get()._timerInterval
     if (interval) clearInterval(interval)
-    set({ timerSeconds: 0, timerActive: false, _timerInterval: null })
+    set({ timerSeconds: 0, timerActive: false, timerDeadline: null, _timerInterval: null })
   },
 
   substituteExercise: (idx, newExerciseName) => {
@@ -70,8 +82,10 @@ export const useWorkoutStore = create(
     set({
       activeSession: null,
       currentExerciseIdx: 0,
+      rehabDone: {},
       timerSeconds: 0,
       timerActive: false,
+      timerDeadline: null,
       _timerInterval: null,
     })
   },
@@ -81,6 +95,7 @@ export const useWorkoutStore = create(
       partialize: (state) => ({
         activeSession: state.activeSession,
         currentExerciseIdx: state.currentExerciseIdx,
+        rehabDone: state.rehabDone,
       }),
     }
   )

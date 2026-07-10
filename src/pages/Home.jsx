@@ -19,16 +19,21 @@ function ActiveRoutine({ routine, onBack }) {
 
     const ex = routine.exercises[exIdx]
     const duration = phase === 'exercise' ? ex.duration_sec : ex.rest_sec
+    // Remaining time derives from a deadline — iOS suspends JS timers on
+    // screen lock, which froze the old decrementing counter.
+    const deadline = Date.now() + duration * 1000
 
     clearInterval(intervalRef.current)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSecondsLeft(duration)
 
-    let remaining = duration
-    intervalRef.current = setInterval(() => {
-      remaining--
+    let finished = false
+    const tick = () => {
+      if (finished) return
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
       setSecondsLeft(remaining)
       if (remaining <= 0) {
+        finished = true
         clearInterval(intervalRef.current)
         if ('vibrate' in navigator) navigator.vibrate([200, 100, 200])
 
@@ -50,10 +55,19 @@ function ActiveRoutine({ routine, onBack }) {
           }
         }
       }
-    }, 1000)
+    }
 
-    return () => clearInterval(intervalRef.current)
-  }, [exIdx, phase])
+    intervalRef.current = setInterval(tick, 1000)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      clearInterval(intervalRef.current)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [exIdx, phase, routine.exercises])
 
   const skip = () => {
     clearInterval(intervalRef.current)

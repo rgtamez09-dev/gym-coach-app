@@ -39,7 +39,7 @@ export default function App() {
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [])
+  }, [initialize])
 
   return (
     <BrowserRouter>

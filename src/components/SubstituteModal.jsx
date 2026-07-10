@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useWorkoutStore } from '../store/workoutStore'
 
@@ -8,7 +8,7 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const fetchAlternatives = async () => {
+  const fetchAlternatives = useCallback(async () => {
     if (!exerciseInfo) {
       setLoading(false)
       return
@@ -32,12 +32,12 @@ export default function SubstituteModal({ exerciseIdx, exerciseName, exerciseInf
       setAlternatives(data || [])
     }
     setLoading(false)
-  }
+  }, [exerciseInfo, exerciseName])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAlternatives()
-  }, [])
+  }, [fetchAlternatives])
 
   const handleSubstitute = (newName) => {
     substituteExercise(exerciseIdx, newName)

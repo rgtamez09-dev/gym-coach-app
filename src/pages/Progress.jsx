@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/authStore'
@@ -24,7 +24,7 @@ export default function Progress() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  const fetchProgressData = async () => {
+  const fetchProgressData = useCallback(async () => {
     setError(false)
     try {
       const { data: sessions, error: sessErr } = await supabase
@@ -89,12 +89,12 @@ export default function Progress() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user.id])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProgressData()
-  }, [])
+  }, [fetchProgressData])
 
   const exerciseNames = Object.keys(exerciseData)
   const chartData = selectedExercise ? exerciseData[selectedExercise] : []
@@ -196,7 +196,7 @@ export default function Progress() {
                 <div className="space-y-2">
                   {[...chartData].reverse().slice(0, 8).map((d, i) => (
                     <div key={i} className="flex items-center justify-between text-sm">
-                      <span className="text-[var(--color-gym-muted)]">{d.date}</span>
+                      <span className="text-[var(--color-gym-muted)]">{d.label}</span>
                       <span className={`font-semibold ${d.maxWeight === pr ? 'text-[var(--color-gym-warning)]' : 'text-[var(--color-gym-text)]'}`}>
                         {d.maxWeight} kg {d.maxWeight === pr ? '🏆' : ''}
                       </span>
