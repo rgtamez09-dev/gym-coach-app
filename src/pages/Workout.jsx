@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkoutStore } from '../store/workoutStore'
 import { supabase } from '../lib/supabase'
@@ -43,6 +43,8 @@ export default function Workout() {
     goToExercise,
     startTimer,
     clearSession,
+    rehabDone,
+    toggleRehabDone,
   } = useWorkoutStore()
 
   const [exerciseMap, setExerciseMap] = useState({})
@@ -60,7 +62,6 @@ export default function Workout() {
   const [discardError, setDiscardError] = useState(false)
   const [logError, setLogError] = useState(false)
   const [finishError, setFinishError] = useState(false)
-  const [rehabDone, setRehabDone] = useState({})
   const [editingSetId, setEditingSetId] = useState(null)
   const [editWeight, setEditWeight] = useState('')
   const [editReps, setEditReps] = useState('')
@@ -68,6 +69,8 @@ export default function Workout() {
   const [editError, setEditError] = useState(false)
 
   const hydratedRef = useRef(false)
+
+  const activeSessionId = activeSession?.id ?? null
 
   const currentWeek = getCurrentWeek()
   const currentPhase = getCurrentPhase(currentWeek)
@@ -81,32 +84,57 @@ export default function Workout() {
     ? activeSession?.exercises.findIndex((e) => e.exercise_name === exercise.superset_with)
     : -1
 
-  const fetchExercises = async () => {
+  const fetchExercises = useCallback(async () => {
     const { data } = await supabase.from('exercises').select('*')
     if (data) {
       const map = {}
       data.forEach((ex) => { map[ex.name_en] = ex })
       setExerciseMap(map)
     }
-  }
+  }, [])
 
-  const fetchPrevSets = async (exerciseId) => {
+  const prevSetsReqRef = useRef(0)
+
+  const fetchPrevSets = useCallback(async (exerciseId) => {
+    // Guard against stale responses when navigating exercises quickly:
+    // only the latest request may write state.
+    const reqId = ++prevSetsReqRef.current
+
+    // The hint must be judged against ONE workout — find the most recent
+    // completed session containing this exercise, then take its sets.
+    // Grabbing the last 5 sets globally mixed two workouts when a session
+    // was cut short, producing unearned progression hints.
+    const { data: lastSession } = await supabase
+      .from('sets')
+      .select('session_id, sessions!inner(completed)')
+      .eq('exercise_id', exerciseId)
+      .neq('session_id', activeSessionId)
+      .eq('completed', true)
+      .eq('sessions.completed', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    if (reqId !== prevSetsReqRef.current) return
+    if (!lastSession?.length) {
+      setPrevSets([])
+      return
+    }
+
     const { data } = await supabase
       .from('sets')
       .select('weight_kg, reps, rpe, set_number')
       .eq('exercise_id', exerciseId)
-      .neq('session_id', activeSession.id)
+      .eq('session_id', lastSession[0].session_id)
       .eq('completed', true)
-      .order('created_at', { ascending: false })
-      .limit(5)
+      .order('set_number', { ascending: true })
+    if (reqId !== prevSetsReqRef.current) return
     setPrevSets(data || [])
-  }
+  }, [activeSessionId])
 
-  const hydrateSessionSets = async () => {
+  const hydrateSessionSets = useCallback(async () => {
     const { data } = await supabase
       .from('sets')
       .select('*')
-      .eq('session_id', activeSession.id)
+      .eq('session_id', activeSessionId)
       .eq('completed', true)
       .order('created_at', { ascending: true })
     if (!data) return
@@ -115,7 +143,7 @@ export default function Workout() {
     setSessionSets(
       data.map((s) => ({ ...s, exercise_name: idToName[s.exercise_id] ?? '' }))
     )
-  }
+  }, [activeSessionId, exerciseMap])
 
   useEffect(() => {
     if (!activeSession) {
@@ -124,7 +152,7 @@ export default function Workout() {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchExercises()
-  }, [activeSession])
+  }, [activeSession, navigate, fetchExercises])
 
   useEffect(() => {
     if (exerciseInfo?.id) {
@@ -133,16 +161,16 @@ export default function Workout() {
       setWeight('')
       setReps('')
     }
-  }, [currentExerciseIdx, exerciseInfo?.id])
+  }, [currentExerciseIdx, exerciseInfo?.id, fetchPrevSets])
 
   useEffect(() => {
     if (hydratedRef.current) return
-    if (!activeSession?.id) return
+    if (!activeSessionId) return
     if (Object.keys(exerciseMap).length === 0) return
     hydratedRef.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
     hydrateSessionSets()
-  }, [activeSession?.id, exerciseMap])
+  }, [activeSessionId, exerciseMap, hydrateSessionSets])
 
   const logSet = async () => {
     if (!exercise) return
@@ -154,7 +182,7 @@ export default function Workout() {
       session_id: activeSession.id,
       exercise_id: exerciseInfo?.id ?? null,
       set_number: setNumber,
-      weight_kg: weight !== '' ? parseFloat(weight) : 0,
+      weight_kg: weight !== '' ? parseFloat(weight) : null,
       reps: reps !== '' ? parseInt(reps) : null,
       rpe,
       completed: true,
@@ -175,7 +203,9 @@ export default function Workout() {
     setFinishing(true)
     setFinishError(false)
     const startedAt = new Date(activeSession.created_at)
-    const duration = Math.round((Date.now() - startedAt.getTime()) / 60000)
+    // Cap at 4h: duration derives from created_at, so a session resumed the
+    // next day would otherwise record an absurd length.
+    const duration = Math.min(Math.round((Date.now() - startedAt.getTime()) / 60000), 240)
     const { error } = await supabase
       .from('sessions')
       .update({ completed: true, duration_min: duration })
@@ -224,7 +254,7 @@ export default function Workout() {
     const { data, error } = await supabase
       .from('sets')
       .update({
-        weight_kg: editWeight !== '' ? parseFloat(editWeight) : 0,
+        weight_kg: editWeight !== '' ? parseFloat(editWeight) : null,
         reps: editReps !== '' ? parseInt(editReps) : null,
         rpe: editRpe,
       })
@@ -244,7 +274,6 @@ export default function Workout() {
   if (!activeSession || !exercise) return null
 
   const currentSets = sessionSets.filter((s) => s.exercise_name === exercise.exercise_name)
-  const suggestedWeight = prevSets[0]?.weight_kg ?? null
 
   const maxReps = getRepRangeMax(exercise.reps)
   const rpeThreshold = getRpeThreshold(currentPhase)
@@ -254,6 +283,11 @@ export default function Workout() {
     prevSets.slice(0, exercise.sets).every((s) =>
       s.reps != null && s.reps >= maxReps && s.rpe != null && s.rpe <= rpeThreshold
     )
+
+  const prevWeights = prevSets.map((s) => s.weight_kg).filter((w) => w != null)
+  const lastWeight = prevWeights.length ? Math.max(...prevWeights) : null
+  const suggestedWeight =
+    lastWeight != null && shouldShowProgressionHint ? lastWeight + 2.5 : lastWeight
 
   return (
     <div className="min-h-screen bg-[var(--color-gym-bg)] pb-24">
@@ -337,7 +371,7 @@ export default function Workout() {
               </p>
             </div>
             <button
-              onClick={() => setRehabDone((prev) => ({ ...prev, [currentExerciseIdx]: !prev[currentExerciseIdx] }))}
+              onClick={() => toggleRehabDone(currentExerciseIdx)}
               className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
                 rehabDone[currentExerciseIdx]
                   ? 'bg-[var(--color-gym-success)]/20 text-[var(--color-gym-success)]'

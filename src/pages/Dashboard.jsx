@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
@@ -48,7 +48,7 @@ export default function Dashboard() {
   const todayType = getTodayDayType()
   const activeType = selectedType ?? todayType
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setError(false)
     try {
       const [countRes, prRes] = await Promise.all([
@@ -61,7 +61,8 @@ export default function Dashboard() {
 
         supabase
           .from('sets')
-          .select('weight_kg, reps, exercises(name_en)')
+          .select('weight_kg, reps, sessions!inner(user_id), exercises(name_en)')
+          .eq('sessions.user_id', user.id)
           .eq('completed', true)
           .not('weight_kg', 'is', null)
           .order('weight_kg', { ascending: false })
@@ -77,12 +78,12 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user.id])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
 
   useEffect(() => {
     const loadTemplate = async () => {
@@ -95,7 +96,6 @@ export default function Dashboard() {
         .limit(1)
       setTemplate(data?.length ? data[0] : null)
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTemplate()
   }, [activeType, phase])
 
@@ -294,7 +294,7 @@ export default function Dashboard() {
         {/* Last PR */}
         {lastPR?.weight_kg ? (
           <div className="bg-[var(--color-gym-surface)] border border-[var(--color-gym-border)] rounded-2xl p-4">
-            <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-1">Último PR</p>
+            <p className="text-[var(--color-gym-muted)] text-xs uppercase tracking-wide mb-1">Mejor marca</p>
             <p className="text-[var(--color-gym-text)] font-semibold">{lastPR.exercises?.name_en}</p>
             <p className="text-[var(--color-gym-warning)] font-bold text-2xl mt-1">
               {lastPR.weight_kg} kg × {lastPR.reps} reps

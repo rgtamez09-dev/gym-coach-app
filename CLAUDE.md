@@ -1,16 +1,16 @@
 # Gym Coach App
 
-App web personal de entrenamiento de gym con plan de 6 meses personalizado. Stack: React 18 + Vite + Tailwind CSS + Zustand + Supabase + Netlify.
+App web personal de entrenamiento de gym con plan de 6 meses personalizado. Stack: React 19 + Vite + Tailwind CSS + Zustand + Supabase + Netlify.
 
 ## Stack técnico
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React 18 + Vite |
+| Frontend | React 19 + Vite |
 | Estilos | Tailwind CSS v4 (plugin Vite, sin config file) |
 | Estado | Zustand |
 | Base de datos | Supabase (PostgreSQL) — project ref: dtvxtuccnhkdclhyqexl |
-| Auth | Supabase Auth (magic link por email) |
+| Auth | Supabase Auth (email + contraseña; magic link solo como recovery) |
 | Deploy | Netlify (free tier) |
 
 **Idioma:** UI en español, nombres de ejercicios en inglés.
@@ -38,7 +38,6 @@ src/
   pages/        → Dashboard, Workout, Program, Exercises, Progress, Nutrition
   components/   → Componentes reutilizables (modals, cards, nav, timer)
   store/        → Zustand stores (auth, workout, program)
-  hooks/        → Custom hooks (useSession, useSets, useExercises, useProgress)
   data/         → Constantes del plan (fases, sustitutos de ejercicios)
 ```
 
@@ -103,6 +102,18 @@ git commit -m "feat: ..."     # commitear (Conventional Commits)
 git push origin develop       # subir cambios
 # luego crear PR en GitHub: develop → main
 ```
+
+## Keep-Alive automático (Supabase free tier)
+
+El workflow `.github/workflows/supabase-keepalive.yml` hace una lectura real a PostgREST (`/rest/v1/exercises?select=id&limit=1`) cada día a las 09:17 UTC, lo que cuenta como actividad y evita que Supabase pause el proyecto (umbral: 7 días sin actividad).
+
+**Verificar que sigue vivo:** GitHub → Actions → "Supabase Keep-Alive" → último run verde.
+**Si el run es rojo:** Supabase probablemente ya está pausado o el secret `SUPABASE_ANON_KEY` expiró.
+**Re-activar manualmente:** Actions → "Supabase Keep-Alive" → "Run workflow".
+
+**Trampa de los 60 días:** GitHub deshabilita los workflows programados si no hay actividad en el repo en 60 días. El workflow mismo lo previene: el día 1 de cada mes hace un commit a `.github/keepalive-heartbeat.txt` que resetea el contador. Si ves cero runs después de 60 días → ir a Actions y re-habilitar el workflow manualmente.
+
+**Secret requerido:** `SUPABASE_ANON_KEY` en repo Settings → Secrets → Actions. Si se perde/expira: obtener la anon key de Supabase Dashboard → Settings → API y volver a ejecutar `gh secret set SUPABASE_ANON_KEY --body <key> --repo rgtamez09-dev/gym-coach-app`.
 
 ## Ajustes al plan de entrenamiento
 
