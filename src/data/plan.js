@@ -10,13 +10,16 @@ const DAY_TYPE_MAP = {
   0: null,       // Sunday - rest
 }
 
+// Calendar week — ONLY for informational display (Program page note).
+// Never use it to pick templates or phases: the plan week lives in
+// user_program (useProgramStore) and advances when training happens.
 export function getCurrentWeek() {
   const diffMs = Date.now() - PROGRAM_START.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   return Math.max(1, Math.min(24, Math.floor(diffDays / 7) + 1))
 }
 
-export function getCurrentPhase(week) {
+export function getPhaseForWeek(week) {
   if (week <= 8) return 1
   if (week <= 16) return 2
   return 3
