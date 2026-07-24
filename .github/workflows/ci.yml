@@ -1,0 +1,41 @@
+name: CI
+
+# Self-verification loop: lint + build on every PR and on develop pushes.
+# Build needs the Vite env vars at compile time; the anon key is public by
+# design (RLS protects the data) but lives in secrets to keep it out of git.
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - ".github/keepalive-heartbeat.txt"
+  push:
+    branches: [develop]
+    paths-ignore:
+      - "**.md"
+      - ".github/keepalive-heartbeat.txt"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint + Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify (lint + build)
+        run: npm run verify
+        env:
+          VITE_SUPABASE_URL: https://dtvxtuccnhkdclhyqexl.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
